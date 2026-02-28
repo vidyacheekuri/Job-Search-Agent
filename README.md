@@ -237,13 +237,6 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 - Don't make excessive requests
 - Use for personal job searching only
 - Consider rate limiting in production
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
 ---
 
 ## Author
