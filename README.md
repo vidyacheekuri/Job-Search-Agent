@@ -1,109 +1,253 @@
 # LinkedIn Job Scraper
 
-A Python CLI tool and web application for searching job listings from LinkedIn.
+Search and discover job opportunities from LinkedIn with a modern web interface or command line.
+
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![React](https://img.shields.io/badge/React-18-61DAFB.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## Features
 
-- **CLI Tool** - Search jobs from the command line
-- **Web UI** - Modern React dashboard with filters
-- **API** - FastAPI backend for programmatic access
-- **Export** - Save results to CSV or JSON
-- **Filters** - Job type, remote, experience, salary, Easy Apply, and more
+| Feature | Description |
+|---------|-------------|
+| **Web Dashboard** | Clean React UI with search and filters |
+| **CLI Tool** | Search directly from your terminal |
+| **REST API** | Integrate with your own applications |
+| **Advanced Filters** | Job type, location, experience, salary, remote |
+| **Easy Apply** | Filter for LinkedIn Easy Apply jobs |
+| **Export** | Save results to CSV or JSON |
+| **Full Descriptions** | Fetch complete job details |
 
-## Quick Start
+## Screenshots
 
-### Option 1: Web UI
+### Web Interface
+Search for jobs with an intuitive interface featuring real-time results and clickable job cards.
 
-**Terminal 1 - Start API:**
+### Terminal Output
+Beautiful formatted tables with job listings directly in your terminal.
+
+---
+
+## Installation
+
+### Prerequisites
+- Python 3.10 or higher
+- Node.js 18+ (for web UI only)
+
+### Setup
+
 ```bash
-cd linkedin-job-scraper
+# Clone the repository
+git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
+cd Linkedin-job-scraper
+
+# Install Python dependencies
 pip install -r requirements.txt
+
+# Install CLI tool
+pip install -e .
+```
+
+---
+
+## Usage
+
+### Web Interface
+
+The easiest way to use the scraper. Requires two terminal windows.
+
+**Terminal 1 - Start the API server:**
+```bash
 python api/main.py
 ```
 
-**Terminal 2 - Start Frontend:**
+**Terminal 2 - Start the web app:**
 ```bash
-cd linkedin-job-scraper/frontend
+cd frontend
 npm install
 npm run dev
 ```
 
 Open **http://localhost:5173** in your browser.
 
-### Option 2: Command Line
+---
 
-```bash
-pip install -e .
-linkedin-jobs search "software engineer" --location "San Francisco"
-```
+### Command Line
 
-## CLI Usage
+For quick searches and automation.
 
 ```bash
 # Basic search
-linkedin-jobs search "software engineer" --location "Remote"
+linkedin-jobs search "software engineer" --location "San Francisco"
 
-# With filters
+# Remote jobs with filters
 linkedin-jobs search "python developer" \
+  --location "Remote" \
   --job-type full-time \
   --experience entry-level \
-  --limit 50 \
-  --output jobs.csv
+  --limit 50
 
-# Easy Apply jobs with full descriptions
-linkedin-jobs search "data scientist" --easy-apply --details -o results.json
+# Easy Apply jobs only
+linkedin-jobs search "data scientist" --easy-apply
+
+# Export to file
+linkedin-jobs search "frontend developer" -o jobs.csv
+
+# Get full job descriptions
+linkedin-jobs search "backend engineer" --details -o detailed_jobs.json
 ```
 
-## CLI Options
+---
+
+### REST API
+
+For integrating with other applications.
+
+```bash
+# Start the server
+python api/main.py
+```
+
+**Endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| GET | `/api/search` | Search for jobs |
+
+**Example Request:**
+```bash
+curl "http://localhost:8000/api/search?keyword=python&location=remote&limit=10"
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `keyword` | string | Job title or search terms (required) |
+| `location` | string | City, state, or "Remote" |
+| `job_type` | string | full-time, part-time, contract, internship |
+| `remote` | string | remote, hybrid, on-site |
+| `experience` | string | entry-level, associate, senior, director, executive |
+| `date_posted` | string | 24hr, past-week, past-month |
+| `salary` | string | 40000, 60000, 80000, 100000, 120000 |
+| `easy_apply` | boolean | Filter for Easy Apply jobs |
+| `under_10_applicants` | boolean | Jobs with fewer applicants |
+| `limit` | integer | Max results (1-100) |
+| `details` | boolean | Fetch full job descriptions |
+
+---
+
+## CLI Reference
+
+```
+linkedin-jobs search [OPTIONS] KEYWORD
+```
 
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--location` | `-l` | City or region |
-| `--job-type` | `-t` | full-time, part-time, contract, internship |
+| `--job-type` | `-t` | full-time, part-time, contract, temporary, volunteer, internship |
 | `--remote` | `-r` | on-site, remote, hybrid |
-| `--experience` | `-e` | entry-level, associate, senior, director, executive |
+| `--experience` | `-e` | internship, entry-level, associate, senior, director, executive |
 | `--date-posted` | `-d` | 24hr, past-week, past-month |
-| `--salary` | `-s` | Minimum: 40000, 60000, 80000, 100000, 120000 |
-| `--limit` | `-n` | Max results (default: 25) |
-| `--output` | `-o` | Export to CSV or JSON |
-| `--details` | `-D` | Fetch full job descriptions |
-| `--easy-apply` | | Easy Apply jobs only |
-| `--under-10-applicants` | | Jobs with <10 applicants |
+| `--salary` | `-s` | Minimum salary: 40000, 60000, 80000, 100000, 120000 |
+| `--sort-by` | | recent, relevant |
+| `--limit` | `-n` | Maximum number of jobs (default: 25) |
+| `--output` | `-o` | Export file path (.csv or .json) |
+| `--format` | `-f` | csv, json, auto |
+| `--details` | `-D` | Fetch full job descriptions (slower) |
+| `--easy-apply` | | Filter to Easy Apply jobs only |
+| `--under-10-applicants` | | Filter to jobs with <10 applicants |
 
-## API
-
-The API runs on `http://localhost:8000`.
-
-```bash
-# Search endpoint
-curl "http://localhost:8000/api/search?keyword=python&location=remote&limit=10"
-```
+---
 
 ## Project Structure
 
 ```
 linkedin-job-scraper/
-├── linkedin_scraper/     # Core scraper
-│   ├── cli.py           # CLI interface
-│   ├── scraper.py       # LinkedIn scraping
-│   └── exporter.py      # CSV/JSON export
-├── api/                  # FastAPI backend
-│   └── main.py
-├── frontend/             # React web UI
-│   └── src/
-├── requirements.txt
-└── setup.py
+│
+├── linkedin_scraper/          # Core Python package
+│   ├── __init__.py
+│   ├── cli.py                 # Command line interface
+│   ├── scraper.py             # LinkedIn scraping logic
+│   └── exporter.py            # CSV/JSON export
+│
+├── api/                       # FastAPI backend
+│   ├── __init__.py
+│   └── main.py                # API endpoints
+│
+├── frontend/                  # React web application
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   ├── services/          # API client
+│   │   ├── types/             # TypeScript types
+│   │   └── App.tsx            # Main app
+│   ├── package.json
+│   └── tailwind.config.js
+│
+├── requirements.txt           # Python dependencies
+├── setup.py                   # Package configuration
+└── README.md
 ```
 
-## Requirements
+---
 
-- Python 3.10+
-- Node.js 18+ (for web UI)
+## How It Works
+
+This tool scrapes LinkedIn's **public job search pages** - the same pages you see when browsing jobs without logging in. No API key or authentication required.
+
+1. Constructs search URL with your filters
+2. Fetches the public job listings page
+3. Parses HTML to extract job data
+4. Returns structured results
+
+**Note:** LinkedIn may rate-limit requests. The scraper includes delays between requests to be respectful.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Scraping | Python, BeautifulSoup, Requests |
+| CLI | Click, Rich |
+| Backend | FastAPI, Uvicorn, Pydantic |
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+
+---
+
+## Contributing
+
+Contributions are welcome! Feel free to:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
 
 ## Disclaimer
 
-This tool scrapes publicly available job listings from LinkedIn. Use responsibly and respect LinkedIn's Terms of Service.
+This tool scrapes publicly available job listings from LinkedIn. Please use responsibly:
+
+- Respect LinkedIn's Terms of Service
+- Don't make excessive requests
+- Use for personal job searching only
+- Consider rate limiting in production
+
+---
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## Author
+
+**Adithya Reddy Geeda**
+
+- GitHub: [@AdithyaReddyGeeda](https://github.com/AdithyaReddyGeeda)
