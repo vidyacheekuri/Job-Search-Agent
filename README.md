@@ -1,50 +1,66 @@
 # LinkedIn Job Scraper
 
-A Python CLI tool for scraping job listings from LinkedIn's public job search pages.
+A Python CLI tool and web application for scraping job listings from LinkedIn's public job search pages.
+
+## Features
+
+- **CLI Tool**: Search jobs from the command line
+- **Web UI**: Modern React dashboard with filters
+- **API**: FastAPI backend for programmatic access
+- **Export**: Save results to CSV or JSON
+- **Filters**: Job type, remote, experience, salary, Easy Apply, and more
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/linkedin-job-scraper.git
-cd linkedin-job-scraper
+git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
+cd Linkedin-job-scraper
 
-# Install in development mode
-pip install -e .
-```
-
-Or install dependencies directly:
-
-```bash
+# Install Python dependencies
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Usage
 
-### Basic Search
+### Option 1: Command Line
 
 ```bash
+# Basic search
 linkedin-jobs search "software engineer" --location "San Francisco"
-```
 
-### With Filters
-
-```bash
+# With filters
 linkedin-jobs search "python developer" \
   --location "Remote" \
   --job-type full-time \
   --experience entry-level \
   --limit 50 \
   --output jobs.csv
+
+# Easy Apply jobs with full descriptions
+linkedin-jobs search "frontend developer" --easy-apply --details
 ```
 
-### Export to JSON
+### Option 2: Web UI
 
+**Terminal 1 - Start the API server:**
 ```bash
-linkedin-jobs search "data scientist" --output results.json
+cd api
+pip install fastapi uvicorn
+python main.py
 ```
 
-## Options
+**Terminal 2 - Start the frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+## CLI Options
 
 | Option | Short | Description |
 |--------|-------|-------------|
@@ -57,25 +73,42 @@ linkedin-jobs search "data scientist" --output results.json
 | `--sort-by` | | recent, relevant |
 | `--limit` | `-n` | Maximum number of jobs (default: 25) |
 | `--output` | `-o` | Output file path (CSV or JSON) |
-| `--format` | `-f` | csv, json, auto (default: auto-detect) |
+| `--details` | `-D` | Fetch full job descriptions (slower) |
+| `--easy-apply` | | Filter to Easy Apply jobs only |
+| `--under-10-applicants` | | Filter to jobs with <10 applicants |
 
-## Output
+## API Endpoints
 
-Results are displayed in a formatted table in the terminal. Use `--output` to save to a file.
+- `GET /` - Health check
+- `GET /api/search` - Search for jobs
 
-### CSV Output Fields
+Example:
+```bash
+curl "http://localhost:8000/api/search?keyword=python&location=remote&limit=10"
+```
 
-- position
-- company
-- location
-- date
-- ago_time
-- salary
-- job_url
-- company_logo
+## Project Structure
+
+```
+linkedin-job-scraper/
+├── linkedin_scraper/     # Core scraper module
+│   ├── cli.py           # CLI commands
+│   ├── scraper.py       # LinkedIn scraping logic
+│   └── exporter.py      # CSV/JSON export
+├── api/                  # FastAPI backend
+│   └── main.py
+├── frontend/             # React web UI
+│   ├── src/
+│   └── package.json
+├── requirements.txt
+├── setup.py
+└── README.md
+```
 
 ## Disclaimer
 
 This tool scrapes publicly available job listings from LinkedIn. Use responsibly and respect LinkedIn's Terms of Service. Consider implementing appropriate rate limiting for production use.
 
+## License
 
+MIT
