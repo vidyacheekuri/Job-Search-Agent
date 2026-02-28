@@ -21,6 +21,10 @@ class Job:
     ago_time: str
     salary: str
     job_url: str
+    description: Optional[str] = None
+    skills: Optional[list[str]] = None
+    apply_method: Optional[str] = None
+    applicant_count: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -94,6 +98,8 @@ class LinkedInScraper:
         experience: str = "",
         salary: str = "",
         sort_by: str = "",
+        easy_apply: bool = False,
+        under_10_applicants: bool = False,
         start: int = 0,
     ) -> str:
         """Build the LinkedIn jobs search URL with query parameters."""
@@ -129,7 +135,70 @@ class LinkedInScraper:
         if sort_by:
             params["sortBy"] = "DD" if sort_by.lower() == "recent" else "R"
 
+        if easy_apply:
+            params["f_AL"] = "true"
+
+        if under_10_applicants:
+            params["f_EA"] = "true"
+
         return f"{self.BASE_URL}?{urlencode(params)}"
+
+    def fetch_job_details(self, job: Job) -> Job:
+        """
+        Fetch full job details from the job page.
+        
+        Args:
+            job: Job object with job_url populated.
+            
+        Returns:
+            Updated Job object with description, skills, apply_method, and applicant_count.
+        """
+        if not job.job_url:
+            return job
+
+        try:
+            response = self.session.get(job.job_url, timeout=10)
+            response.raise_for_status()
+        except requests.RequestException:
+            return job
+
+        soup = BeautifulSoup(response.text, "lxml")
+
+        description_elem = soup.find("div", class_="show-more-less-html__markup")
+        if description_elem:
+            job.description = description_elem.get_text(separator="\n", strip=True)
+
+        criteria_items = soup.find_all("li", class_="description__job-criteria-item")
+        skills = []
+        for item in criteria_items:
+            header = item.find("h3", class_="description__job-criteria-subheader")
+            if header and "skill" in header.get_text(strip=True).lower():
+                skill_text = item.find("span", class_="description__job-criteria-text")
+                if skill_text:
+                    skills.append(skill_text.get_text(strip=True))
+        if skills:
+            job.skills = skills
+
+        apply_button = soup.find("button", class_="jobs-apply-button")
+        if apply_button:
+            button_text = apply_button.get_text(strip=True).lower()
+            if "easy apply" in button_text:
+                job.apply_method = "Easy Apply"
+            else:
+                job.apply_method = "External"
+        else:
+            apply_link = soup.find("a", class_="apply-button")
+            if apply_link:
+                job.apply_method = "External"
+
+        applicant_elem = soup.find("span", class_="num-applicants__caption")
+        if not applicant_elem:
+            applicant_elem = soup.find("figcaption", class_="num-applicants__caption")
+        if applicant_elem:
+            job.applicant_count = applicant_elem.get_text(strip=True)
+
+        time.sleep(self.delay + random.uniform(0, 0.3))
+        return job
 
     def _parse_job_card(self, card: BeautifulSoup) -> Optional[Job]:
         """Parse a single job card element into a Job object."""
@@ -185,6 +254,8 @@ class LinkedInScraper:
         experience: str = "",
         salary: str = "",
         sort_by: str = "",
+        easy_apply: bool = False,
+        under_10_applicants: bool = False,
         limit: int = 25,
     ) -> list[Job]:
         """
@@ -199,6 +270,8 @@ class LinkedInScraper:
             experience: "entry level", "senior", etc.
             salary: Minimum salary filter.
             sort_by: "recent" or "relevant".
+            easy_apply: Filter to Easy Apply jobs only.
+            under_10_applicants: Filter to jobs with under 10 applicants.
             limit: Maximum number of jobs to return.
             
         Returns:
@@ -218,6 +291,8 @@ class LinkedInScraper:
                 experience=experience,
                 salary=salary,
                 sort_by=sort_by,
+                easy_apply=easy_apply,
+                under_10_applicants=under_10_applicants,
                 start=start,
             )
 

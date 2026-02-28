@@ -3,7 +3,7 @@
 import click
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 from .scraper import LinkedInScraper
 from .exporter import export_jobs
@@ -86,6 +86,24 @@ def main():
     default="auto",
     help="Output format (default: auto-detect from file extension)"
 )
+@click.option(
+    "--details", "-D",
+    is_flag=True,
+    default=False,
+    help="Fetch full job descriptions (slower, makes additional requests)"
+)
+@click.option(
+    "--easy-apply",
+    is_flag=True,
+    default=False,
+    help="Filter to Easy Apply jobs only"
+)
+@click.option(
+    "--under-10-applicants",
+    is_flag=True,
+    default=False,
+    help="Filter to jobs with fewer than 10 applicants"
+)
 def search(
     keyword: str,
     location: str,
@@ -98,6 +116,9 @@ def search(
     limit: int,
     output: str | None,
     format: str,
+    details: bool,
+    easy_apply: bool,
+    under_10_applicants: bool,
 ):
     """
     Search for jobs on LinkedIn.
@@ -111,6 +132,8 @@ def search(
         linkedin-jobs search "python developer" -l Remote -t full-time -n 50
         
         linkedin-jobs search "data scientist" -o jobs.csv
+        
+        linkedin-jobs search "frontend developer" --easy-apply --details
     """
     scraper = LinkedInScraper()
 
@@ -136,12 +159,28 @@ def search(
             experience=experience_val,
             salary=salary or "",
             sort_by=sort_by,
+            easy_apply=easy_apply,
+            under_10_applicants=under_10_applicants,
             limit=limit,
         )
 
     if not jobs:
         console.print("[yellow]No jobs found matching your criteria.[/yellow]")
         return
+
+    if details:
+        console.print(f"\n[cyan]Fetching details for {len(jobs)} job(s)...[/cyan]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Fetching job details...", total=len(jobs))
+            for i, job in enumerate(jobs):
+                scraper.fetch_job_details(job)
+                progress.update(task, advance=1)
 
     console.print(f"\n[green]Found {len(jobs)} job(s)[/green]\n")
 

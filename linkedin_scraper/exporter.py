@@ -30,13 +30,22 @@ def export_to_csv(jobs: list["Job"], filepath: str | Path) -> None:
         "salary",
         "job_url",
         "company_logo",
+        "description",
+        "skills",
+        "apply_method",
+        "applicant_count",
     ]
 
     with open(filepath, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         for job in jobs:
-            writer.writerow(job.to_dict())
+            row = job.to_dict()
+            if row.get("skills"):
+                row["skills"] = "; ".join(row["skills"])
+            if row.get("description"):
+                row["description"] = row["description"][:500] + "..." if len(row["description"]) > 500 else row["description"]
+            writer.writerow(row)
 
 
 def export_to_json(jobs: list["Job"], filepath: str | Path, indent: int = 2) -> None:
