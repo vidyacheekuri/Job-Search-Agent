@@ -78,6 +78,4 @@ Results are displayed in a formatted table in the terminal. Use `--output` to sa
 
 This tool scrapes publicly available job listings from LinkedIn. Use responsibly and respect LinkedIn's Terms of Service. Consider implementing appropriate rate limiting for production use.
 
-## License
 
-MIT
