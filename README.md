@@ -12,6 +12,14 @@ Search and discover job opportunities from LinkedIn with a modern web interface 
 | Feature | Description |
 |---------|-------------|
 | **Web Dashboard** | Clean React UI with search and filters |
+| **Dark Mode** | Toggle between light and dark themes |
+| **Search History** | Quick access to recent searches |
+| **Save Jobs** | Bookmark jobs with personal notes |
+| **Application Tracker** | Track applied jobs with status updates |
+| **Company Info** | Quick links to LinkedIn, Glassdoor, Google |
+| **Salary Insights** | Estimated salary when not provided |
+| **Pagination** | Navigate through large result sets |
+| **Mobile Responsive** | Works on all devices |
 | **CLI Tool** | Search directly from your terminal |
 | **REST API** | Integrate with your own applications |
 | **Advanced Filters** | Job type, location, experience, salary, remote |
@@ -22,7 +30,7 @@ Search and discover job opportunities from LinkedIn with a modern web interface 
 ## Screenshots
 
 ### Web Interface
-Search for jobs with an intuitive interface featuring real-time results and clickable job cards.
+Search for jobs with an intuitive interface featuring real-time results, dark mode, and job tracking.
 
 ### Terminal Output
 Beautiful formatted tables with job listings directly in your terminal.
@@ -70,6 +78,17 @@ npm run dev
 ```
 
 Open **http://localhost:5173** in your browser.
+
+#### Web UI Features
+
+| Feature | How to Use |
+|---------|------------|
+| **Dark Mode** | Click the moon/sun icon in the header |
+| **Search History** | Click on recent search chips below the search bar |
+| **Save Jobs** | Click the bookmark icon on any job card |
+| **Track Applications** | Click "Mark Applied" on a job card |
+| **Company Info** | Click on a company name to view links |
+| **Pagination** | Use page numbers at the bottom of results |
 
 ---
 
@@ -181,9 +200,23 @@ linkedin-job-scraper/
 ├── frontend/                  # React web application
 │   ├── src/
 │   │   ├── components/        # React components
+│   │   │   ├── App.tsx        # Main app with tabs
+│   │   │   ├── SearchForm.tsx # Search with filters
+│   │   │   ├── JobCard.tsx    # Job listing card
+│   │   │   ├── JobList.tsx    # Job results list
+│   │   │   ├── SearchHistory.tsx    # Recent searches
+│   │   │   ├── SavedJobs.tsx        # Bookmarked jobs
+│   │   │   ├── ApplicationTracker.tsx # Track applied jobs
+│   │   │   ├── CompanyInfoModal.tsx   # Company links
+│   │   │   ├── ThemeToggle.tsx        # Dark mode toggle
+│   │   │   ├── Pagination.tsx         # Page navigation
+│   │   │   ├── SkeletonCard.tsx       # Loading skeleton
+│   │   │   └── ErrorMessage.tsx       # Error display
+│   │   ├── hooks/             # Custom React hooks
+│   │   │   ├── useTheme.ts    # Theme management
+│   │   │   └── useLocalStorage.ts # Persistent storage
 │   │   ├── services/          # API client
-│   │   ├── types/             # TypeScript types
-│   │   └── App.tsx            # Main app
+│   │   └── types/             # TypeScript types
 │   ├── package.json
 │   └── tailwind.config.js
 │
@@ -215,6 +248,7 @@ This tool scrapes LinkedIn's **public job search pages** - the same pages you se
 | CLI | Click, Rich |
 | Backend | FastAPI, Uvicorn, Pydantic |
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Storage | localStorage (browser) |
 
 ---
 
@@ -237,6 +271,7 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 - Don't make excessive requests
 - Use for personal job searching only
 - Consider rate limiting in production
+
 ---
 
 ## Author
