@@ -79,7 +79,6 @@ This project implements an AI agent for the **"Middle America Job and Applicatio
 | Sample Resume | ✅ | `data/sample_resume.json` |
 | Evaluation Metrics | ✅ | Precision@10, Interview Yield |
 | Ethics/Bias Analysis | ✅ | `docs/ETHICS.md` |
-| Report Template | ✅ | `docs/REPORT_TEMPLATE.md` |
 | Reflections Template | ✅ | `docs/REFLECTIONS_TEMPLATE.md` |
 
 ---
@@ -759,8 +758,7 @@ For the group assignment, ensure you have:
 - [x] Filter toggle experiment support (Iowa → Texas)
 
 ### Report (8-10 pages)
-- [x] Report template → `docs/REPORT_TEMPLATE.md`
-- [x] Sections: Intro, Design, Eval Results, Bias/Ethics, Appendix
+- [ ] Write report with sections: Intro, Design, Eval Results, Bias/Ethics, Appendix
 
 ### Demo Video (8-10 minutes)
 - [ ] Fresh query run with screen share + voiceover
