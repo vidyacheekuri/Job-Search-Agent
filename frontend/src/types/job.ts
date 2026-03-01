@@ -13,6 +13,25 @@ export interface Job {
   applicant_count?: string | null;
 }
 
+export interface SavedJob extends Job {
+  savedAt: string;
+  notes?: string;
+}
+
+export interface AppliedJob extends Job {
+  appliedAt: string;
+  status: 'applied' | 'interviewing' | 'offered' | 'rejected' | 'withdrawn';
+  notes?: string;
+}
+
+export interface SearchHistoryItem {
+  id: string;
+  keyword: string;
+  location: string;
+  timestamp: string;
+  resultCount: number;
+}
+
 export interface SearchResponse {
   jobs: Job[];
   count: number;
