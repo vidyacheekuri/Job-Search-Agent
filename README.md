@@ -1,39 +1,105 @@
-# LinkedIn Job Scraper
+# AI Job Search Agent
 
-Search and discover job opportunities from LinkedIn with a modern web interface or command line.
+An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, with intelligent ranking, resume tailoring, cover letter generation, and hiring simulation evaluation.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![React](https://img.shields.io/badge/React-18-61DAFB.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
+## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Web Interface](#web-interface)
+  - [Command Line](#command-line)
+  - [API Endpoints](#api-endpoints)
+- [Agent Pipeline](#agent-pipeline)
+- [Evaluation Framework](#evaluation-framework)
+- [Ethics & Bias Analysis](#ethics--bias-analysis)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Contributing](#contributing)
+
+---
+
 ## Features
 
+### Core Features
 | Feature | Description |
 |---------|-------------|
-| **Web Dashboard** | Clean React UI with search and filters |
+| **Job Search** | Search LinkedIn for AI/ML engineering jobs |
+| **Company Size Filter** | Filter for small, mid-sized, or large companies |
+| **AI-Powered Ranking** | Rank jobs by profile match (skills, title, location, experience) |
+| **Resume Tailoring** | Generate customized resumes for each job |
+| **Cover Letter Generation** | AI-generated personalized cover letters |
+| **ATS Optimization** | Score resumes for Applicant Tracking Systems |
+
+### Web Dashboard Features
+| Feature | Description |
+|---------|-------------|
 | **Dark Mode** | Toggle between light and dark themes |
 | **Search History** | Quick access to recent searches |
 | **Save Jobs** | Bookmark jobs with personal notes |
-| **Application Tracker** | Track applied jobs with status updates |
+| **Application Tracker** | Track jobs with status (Applied → Offered) |
 | **Company Info** | Quick links to LinkedIn, Glassdoor, Google |
 | **Salary Insights** | Estimated salary when not provided |
-| **Pagination** | Navigate through large result sets |
 | **Mobile Responsive** | Works on all devices |
-| **CLI Tool** | Search directly from your terminal |
-| **REST API** | Integrate with your own applications |
-| **Advanced Filters** | Job type, location, experience, salary, remote |
-| **Easy Apply** | Filter for LinkedIn Easy Apply jobs |
-| **Export** | Save results to CSV or JSON |
-| **Full Descriptions** | Fetch complete job details |
+| **Pagination** | Navigate through large result sets |
 
-## Screenshots
+### AI Agent Features
+| Feature | Description |
+|---------|-------------|
+| **Profile Management** | Create profile or parse from resume text |
+| **Job Matching** | Score jobs 0-100% based on profile fit |
+| **Skill Gap Analysis** | Identify missing skills to learn |
+| **Hiring Simulation** | Mock recruiter evaluation of applications |
+| **Bias Analysis** | Detect biases in search results |
 
-### Web Interface
-Search for jobs with an intuitive interface featuring real-time results, dark mode, and job tracking.
+---
 
-### Terminal Output
-Beautiful formatted tables with job listings directly in your terminal.
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Web Interface (React)                     │
+├─────────────────────────────────────────────────────────────────┤
+│  Search Tab  │  AI Agent Tab  │  Saved Jobs  │  Applications    │
+└──────────────┴────────────────┴──────────────┴──────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      FastAPI Backend                             │
+├─────────────────────────────────────────────────────────────────┤
+│  /api/search      │  /api/profile     │  /api/agent/run         │
+│  /api/search/ranked│ /api/tailor/resume│ /api/evaluate          │
+│  /api/generate/   │                   │  /api/analyze/bias      │
+│     cover-letter  │                   │                         │
+└──────────────┬────┴────────────────┬──┴─────────────────────────┘
+               │                     │
+               ▼                     ▼
+┌──────────────────────┐   ┌──────────────────────────────────────┐
+│   LinkedIn Scraper   │   │           AI Agent Module            │
+├──────────────────────┤   ├──────────────────────────────────────┤
+│ • Job Search         │   │ • UserProfile (profile.py)           │
+│ • Job Details        │   │ • JobRanker (ranker.py)              │
+│ • Pagination         │   │ • ResumeTailor (resume_tailor.py)    │
+│ • Rate Limiting      │   │ • CoverLetterGenerator (cover_letter)│
+└──────────────────────┘   │ • JobSearchAgent (agent.py)          │
+                           │ • Evaluation (evaluation.py)         │
+                           └──────────────────────────────────────┘
+```
+
+### Agent Pipeline
+
+```
+1. SEARCH → 2. FILTER → 3. RANK → 4. TAILOR
+    │            │          │         │
+    ▼            ▼          ▼         ▼
+ LinkedIn    Company     Profile   Resume +
+   Jobs       Size       Match    Cover Letter
+```
 
 ---
 
@@ -41,9 +107,9 @@ Beautiful formatted tables with job listings directly in your terminal.
 
 ### Prerequisites
 - Python 3.10 or higher
-- Node.js 18+ (for web UI only)
+- Node.js 18+ (for web UI)
 
-### Setup
+### Quick Start
 
 ```bash
 # Clone the repository
@@ -55,6 +121,17 @@ pip install -r requirements.txt
 
 # Install CLI tool
 pip install -e .
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+```
+
+### Optional: OpenAI API Key
+For enhanced resume and cover letter generation:
+```bash
+export OPENAI_API_KEY="your-api-key"
 ```
 
 ---
@@ -63,122 +140,194 @@ pip install -e .
 
 ### Web Interface
 
-The easiest way to use the scraper. Requires two terminal windows.
+The easiest way to use the agent. Start both servers:
 
-**Terminal 1 - Start the API server:**
+**Terminal 1 - API Server:**
 ```bash
 python api/main.py
 ```
 
-**Terminal 2 - Start the web app:**
+**Terminal 2 - Frontend:**
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
 
 Open **http://localhost:5173** in your browser.
 
-#### Web UI Features
+#### Using the AI Agent Tab
 
-| Feature | How to Use |
-|---------|------------|
-| **Dark Mode** | Click the moon/sun icon in the header |
-| **Search History** | Click on recent search chips below the search bar |
-| **Save Jobs** | Click the bookmark icon on any job card |
-| **Track Applications** | Click "Mark Applied" on a job card |
-| **Company Info** | Click on a company name to view links |
-| **Pagination** | Use page numbers at the bottom of results |
+1. **Create Profile**: Fill in your details or paste your resume
+2. **Search**: Enter job keywords and location
+3. **Review Ranked Jobs**: See match scores and skill gaps
+4. **Generate Materials**: Create tailored resumes and cover letters
+5. **Evaluate**: Run hiring simulation to test your applications
+6. **Analyze Bias**: Check for biases in search results
 
 ---
 
 ### Command Line
 
-For quick searches and automation.
-
 ```bash
-# Basic search
-linkedin-jobs search "software engineer" --location "San Francisco"
+# Basic AI Engineer job search
+linkedin-jobs search "AI Engineer" --location "San Francisco"
 
-# Remote jobs with filters
-linkedin-jobs search "python developer" \
+# Search for mid-sized companies with filters
+linkedin-jobs search "Machine Learning Engineer" \
   --location "Remote" \
   --job-type full-time \
-  --experience entry-level \
+  --experience senior \
+  --easy-apply \
   --limit 50
 
-# Easy Apply jobs only
-linkedin-jobs search "data scientist" --easy-apply
-
-# Export to file
-linkedin-jobs search "frontend developer" -o jobs.csv
-
-# Get full job descriptions
-linkedin-jobs search "backend engineer" --details -o detailed_jobs.json
+# Export to file with full descriptions
+linkedin-jobs search "Deep Learning Engineer" \
+  --details \
+  -o ai_jobs.json
 ```
 
 ---
 
-### REST API
+### API Endpoints
 
-For integrating with other applications.
-
+Start the API server:
 ```bash
-# Start the server
 python api/main.py
 ```
 
-**Endpoints:**
+#### Core Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Health check |
-| GET | `/api/search` | Search for jobs |
+| GET | `/api/search` | Search jobs with filters |
+| POST | `/api/profile` | Create user profile |
+| POST | `/api/profile/parse` | Parse resume text |
+| POST | `/api/search/ranked` | Search and rank by profile |
+| POST | `/api/tailor/resume` | Generate tailored resume |
+| POST | `/api/generate/cover-letter` | Generate cover letter |
+| POST | `/api/agent/run` | Run full agent pipeline |
+| POST | `/api/evaluate` | Run hiring simulation |
+| POST | `/api/analyze/bias` | Analyze result biases |
 
-**Example Request:**
+#### Example: Full Pipeline
+
 ```bash
-curl "http://localhost:8000/api/search?keyword=python&location=remote&limit=10"
+# 1. Create profile
+curl -X POST "http://localhost:8000/api/profile" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "title": "AI Engineer",
+    "years_experience": 5,
+    "skills": ["Python", "TensorFlow", "PyTorch", "NLP"],
+    "target_roles": ["AI Engineer", "ML Engineer"]
+  }'
+
+# 2. Search and rank jobs
+curl -X POST "http://localhost:8000/api/search/ranked?\
+keyword=AI%20Engineer&\
+location=Remote&\
+profile_id=john@example.com&\
+company_size=mid&\
+top_n=10"
+
+# 3. Generate resume for a job
+curl -X POST "http://localhost:8000/api/tailor/resume?\
+profile_id=john@example.com&\
+job_url=https://linkedin.com/jobs/view/123456"
+
+# 4. Run evaluation
+curl -X POST "http://localhost:8000/api/evaluate?\
+profile_id=john@example.com&\
+keyword=AI%20Engineer&\
+num_applications=5"
 ```
-
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `keyword` | string | Job title or search terms (required) |
-| `location` | string | City, state, or "Remote" |
-| `job_type` | string | full-time, part-time, contract, internship |
-| `remote` | string | remote, hybrid, on-site |
-| `experience` | string | entry-level, associate, senior, director, executive |
-| `date_posted` | string | 24hr, past-week, past-month |
-| `salary` | string | 40000, 60000, 80000, 100000, 120000 |
-| `easy_apply` | boolean | Filter for Easy Apply jobs |
-| `under_10_applicants` | boolean | Jobs with fewer applicants |
-| `limit` | integer | Max results (1-100) |
-| `details` | boolean | Fetch full job descriptions |
 
 ---
 
-## CLI Reference
+## Agent Pipeline
 
-```
-linkedin-jobs search [OPTIONS] KEYWORD
+The agent follows a 4-step pipeline:
+
+### 1. Search
+- Query LinkedIn for job listings
+- Support for multiple AI-related keywords
+- Rate-limited to respect LinkedIn
+
+### 2. Filter
+- **Company Size**: small (startups), mid (growth stage), large (enterprise)
+- **Requirements**: salary, easy apply, applicant count
+- **Exclusions**: specific companies
+
+### 3. Rank
+Jobs are scored 0-100% based on:
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Skills | 35% | Matching technical skills |
+| Title | 25% | Job title relevance |
+| Location | 15% | Geographic match |
+| Experience | 10% | Years alignment |
+| Salary | 10% | Meets expectations |
+| Company | 5% | Target company match |
+
+### 4. Tailor
+For each top job:
+- **Resume**: Reorder skills, optimize keywords, improve ATS score
+- **Cover Letter**: Personalize for company and role
+
+---
+
+## Evaluation Framework
+
+### Hiring Simulation
+The evaluator simulates recruiter review:
+
+```python
+from linkedin_scraper.agent import JobSearchAgent, AgentEvaluator
+
+# Create agent with profile
+agent = JobSearchAgent(profile)
+evaluator = AgentEvaluator(recruiter_strictness=0.5)
+
+# Run evaluation
+agent.run_full_pipeline(keyword="AI Engineer", top_n_applications=10)
+metrics = evaluator.evaluate_applications(agent.get_applications())
+
+print(f"Interview Rate: {metrics.interview_rate}%")
+print(f"Average Match Score: {metrics.avg_match_score}")
+print(f"ATS Score: {metrics.avg_ats_score}")
 ```
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--location` | `-l` | City or region |
-| `--job-type` | `-t` | full-time, part-time, contract, temporary, volunteer, internship |
-| `--remote` | `-r` | on-site, remote, hybrid |
-| `--experience` | `-e` | internship, entry-level, associate, senior, director, executive |
-| `--date-posted` | `-d` | 24hr, past-week, past-month |
-| `--salary` | `-s` | Minimum salary: 40000, 60000, 80000, 100000, 120000 |
-| `--sort-by` | | recent, relevant |
-| `--limit` | `-n` | Maximum number of jobs (default: 25) |
-| `--output` | `-o` | Export file path (.csv or .json) |
-| `--format` | `-f` | csv, json, auto |
-| `--details` | `-D` | Fetch full job descriptions (slower) |
-| `--easy-apply` | | Filter to Easy Apply jobs only |
-| `--under-10-applicants` | | Filter to jobs with <10 applicants |
+### Metrics Tracked
+- Interview rate (% advancing)
+- Resume scores
+- Cover letter scores
+- Skill coverage
+- ATS optimization
+- Recruiter feedback
+
+---
+
+## Ethics & Bias Analysis
+
+See [docs/ETHICS.md](docs/ETHICS.md) for full documentation.
+
+### Bias Detection
+The agent analyzes:
+- **Location bias**: Geographic distribution
+- **Company size bias**: Startup vs enterprise skew
+- **Salary range bias**: Compensation patterns
+- **Experience level bias**: Junior vs senior roles
+- **Language bias**: Problematic terms in job postings
+
+### Responsible Usage
+- Use for personal job searching only
+- Review all AI-generated content before submitting
+- Don't misrepresent experience or skills
+- Respect LinkedIn's rate limits
 
 ---
 
@@ -186,39 +335,33 @@ linkedin-jobs search [OPTIONS] KEYWORD
 
 ```
 linkedin-job-scraper/
-│
 ├── linkedin_scraper/          # Core Python package
 │   ├── __init__.py
 │   ├── cli.py                 # Command line interface
 │   ├── scraper.py             # LinkedIn scraping logic
-│   └── exporter.py            # CSV/JSON export
+│   ├── exporter.py            # CSV/JSON export
+│   └── agent/                 # AI Agent module
+│       ├── __init__.py
+│       ├── profile.py         # User profile management
+│       ├── ranker.py          # Job ranking algorithm
+│       ├── resume_tailor.py   # Resume generation
+│       ├── cover_letter.py    # Cover letter generation
+│       ├── agent.py           # Main agent orchestrator
+│       └── evaluation.py      # Hiring simulation
 │
 ├── api/                       # FastAPI backend
-│   ├── __init__.py
 │   └── main.py                # API endpoints
 │
 ├── frontend/                  # React web application
 │   ├── src/
 │   │   ├── components/        # React components
-│   │   │   ├── App.tsx        # Main app with tabs
-│   │   │   ├── SearchForm.tsx # Search with filters
-│   │   │   ├── JobCard.tsx    # Job listing card
-│   │   │   ├── JobList.tsx    # Job results list
-│   │   │   ├── SearchHistory.tsx    # Recent searches
-│   │   │   ├── SavedJobs.tsx        # Bookmarked jobs
-│   │   │   ├── ApplicationTracker.tsx # Track applied jobs
-│   │   │   ├── CompanyInfoModal.tsx   # Company links
-│   │   │   ├── ThemeToggle.tsx        # Dark mode toggle
-│   │   │   ├── Pagination.tsx         # Page navigation
-│   │   │   ├── SkeletonCard.tsx       # Loading skeleton
-│   │   │   └── ErrorMessage.tsx       # Error display
-│   │   ├── hooks/             # Custom React hooks
-│   │   │   ├── useTheme.ts    # Theme management
-│   │   │   └── useLocalStorage.ts # Persistent storage
+│   │   ├── hooks/             # Custom hooks
 │   │   ├── services/          # API client
 │   │   └── types/             # TypeScript types
-│   ├── package.json
-│   └── tailwind.config.js
+│   └── package.json
+│
+├── docs/
+│   └── ETHICS.md              # Ethics documentation
 │
 ├── requirements.txt           # Python dependencies
 ├── setup.py                   # Package configuration
@@ -227,24 +370,12 @@ linkedin-job-scraper/
 
 ---
 
-## How It Works
-
-This tool scrapes LinkedIn's **public job search pages** - the same pages you see when browsing jobs without logging in. No API key or authentication required.
-
-1. Constructs search URL with your filters
-2. Fetches the public job listings page
-3. Parses HTML to extract job data
-4. Returns structured results
-
-**Note:** LinkedIn may rate-limit requests. The scraper includes delays between requests to be respectful.
-
----
-
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | Scraping | Python, BeautifulSoup, Requests |
+| AI/ML | Heuristic matching, OpenAI (optional) |
 | CLI | Click, Rich |
 | Backend | FastAPI, Uvicorn, Pydantic |
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
@@ -254,12 +385,26 @@ This tool scrapes LinkedIn's **public job search pages** - the same pages you se
 
 ## Contributing
 
-Contributions are welcome! Feel free to:
+Contributions are welcome! Areas of interest:
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+- [ ] Additional job sources (Indeed, Glassdoor)
+- [ ] Improved skill matching (embeddings)
+- [ ] PDF resume parsing
+- [ ] Interview preparation module
+- [ ] Salary negotiation assistant
+
+### Development Setup
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linting
+flake8 linkedin_scraper
+```
 
 ---
 
@@ -271,6 +416,7 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 - Don't make excessive requests
 - Use for personal job searching only
 - Consider rate limiting in production
+- Review all AI-generated content before use
 
 ---
 
@@ -279,3 +425,9 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 **Adithya Reddy Geeda**
 
 - GitHub: [@AdithyaReddyGeeda](https://github.com/AdithyaReddyGeeda)
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

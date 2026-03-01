@@ -18,6 +18,7 @@ const defaultFilters: SearchFilters = {
   sortBy: 'relevant',
   easyApply: false,
   under10Applicants: false,
+  companySize: '',
   limit: 25,
   details: false,
 };

@@ -13,6 +13,18 @@ export interface Job {
   applicant_count?: string | null;
 }
 
+export interface RankedJob {
+  job: Job;
+  score: number;
+  skill_match: number;
+  title_match: number;
+  location_match: number;
+  experience_match: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  match_reasons: string[];
+}
+
 export interface SavedJob extends Job {
   savedAt: string;
   notes?: string;
@@ -39,6 +51,14 @@ export interface SearchResponse {
   location: string;
 }
 
+export interface RankedSearchResponse {
+  jobs: RankedJob[];
+  count: number;
+  keyword: string;
+  location: string;
+  profile_name: string;
+}
+
 export interface SearchFilters {
   keyword: string;
   location: string;
@@ -50,6 +70,104 @@ export interface SearchFilters {
   sortBy: string;
   easyApply: boolean;
   under10Applicants: boolean;
+  companySize: string;
   limit: number;
   details: boolean;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin_url: string;
+  github_url: string;
+  portfolio_url: string;
+  title: string;
+  summary: string;
+  years_experience: number;
+  skills: string[];
+  programming_languages: string[];
+  frameworks: string[];
+  tools: string[];
+  experience: WorkExperience[];
+  education: Education[];
+  certifications: string[];
+  projects: Project[];
+  target_roles: string[];
+  target_companies: string[];
+  preferred_locations: string[];
+  remote_preference: string;
+  min_salary: number;
+}
+
+export interface WorkExperience {
+  title: string;
+  company: string;
+  location: string;
+  duration: string;
+  description: string;
+  highlights: string[];
+}
+
+export interface Education {
+  degree: string;
+  school: string;
+  year: string;
+}
+
+export interface Project {
+  name: string;
+  description: string;
+  technologies: string[];
+}
+
+export interface TailoredResume {
+  summary: string;
+  highlighted_skills: string[];
+  keywords_added: string[];
+  resume_text: string;
+  resume_html: string;
+  ats_score: number;
+  suggestions: string[];
+}
+
+export interface CoverLetter {
+  content: string;
+  html_content: string;
+  word_count: number;
+  key_points: string[];
+  personalization_score: number;
+}
+
+export interface RecruiterFeedback {
+  application_id: string;
+  resume_score: number;
+  cover_letter_score: number;
+  decision: string;
+  impression: string;
+  strengths: string[];
+  weaknesses: string[];
+}
+
+export interface EvaluationMetrics {
+  total_applications: number;
+  avg_match_score: number;
+  avg_ats_score: number;
+  avg_personalization_score: number;
+  interview_rate: number;
+  maybe_rate: number;
+  rejection_rate: number;
+  skill_coverage: number;
+  recruiter_feedback: RecruiterFeedback[];
+}
+
+export interface BiasAnalysis {
+  location_bias: Record<string, number>;
+  company_size_bias: Record<string, number>;
+  salary_range_bias: Record<string, number>;
+  experience_level_bias: Record<string, number>;
+  keyword_frequency: Record<string, number>;
+  excluded_keywords: string[];
+  recommendations: string[];
 }

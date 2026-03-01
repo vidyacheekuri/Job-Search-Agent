@@ -4,6 +4,7 @@ import { JobList } from './components/JobList';
 import { SearchHistory } from './components/SearchHistory';
 import { SavedJobs } from './components/SavedJobs';
 import { ApplicationTracker } from './components/ApplicationTracker';
+import { AgentDashboard } from './components/AgentDashboard';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SkeletonList } from './components/SkeletonCard';
 import { ErrorMessage } from './components/ErrorMessage';
@@ -13,7 +14,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { searchJobs } from './services/api';
 import type { Job, SearchFilters, SearchHistoryItem, SavedJob, AppliedJob } from './types/job';
 
-type Tab = 'search' | 'saved' | 'applications';
+type Tab = 'search' | 'agent' | 'saved' | 'applications';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -132,21 +133,27 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">LinkedIn Job Scraper</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Find your next opportunity</p>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Job Search Agent</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">AI-powered job search & applications</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+              <div className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                 <button onClick={() => setActiveTab('search')} className={tabClass('search')}>
                   Search
+                </button>
+                <button onClick={() => setActiveTab('agent')} className={`${tabClass('agent')} flex items-center gap-1`}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI Agent
                 </button>
                 <button onClick={() => setActiveTab('saved')} className={tabClass('saved')}>
                   Saved
@@ -170,14 +177,17 @@ function App() {
           </div>
           
           {/* Mobile tabs */}
-          <div className="flex sm:hidden items-center gap-1 mt-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            <button onClick={() => setActiveTab('search')} className={`flex-1 ${tabClass('search')}`}>
+          <div className="flex md:hidden items-center gap-1 mt-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
+            <button onClick={() => setActiveTab('search')} className={`flex-shrink-0 ${tabClass('search')}`}>
               Search
             </button>
-            <button onClick={() => setActiveTab('saved')} className={`flex-1 ${tabClass('saved')}`}>
+            <button onClick={() => setActiveTab('agent')} className={`flex-shrink-0 ${tabClass('agent')}`}>
+              AI Agent
+            </button>
+            <button onClick={() => setActiveTab('saved')} className={`flex-shrink-0 ${tabClass('saved')}`}>
               Saved {savedJobs.length > 0 && `(${savedJobs.length})`}
             </button>
-            <button onClick={() => setActiveTab('applications')} className={`flex-1 ${tabClass('applications')}`}>
+            <button onClick={() => setActiveTab('applications')} className={`flex-shrink-0 ${tabClass('applications')}`}>
               Apps {appliedJobs.length > 0 && `(${appliedJobs.length})`}
             </button>
           </div>
@@ -237,11 +247,14 @@ function App() {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                   Find Your Dream Job
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8">
+                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
                   Search through thousands of LinkedIn job listings. Save jobs, track applications, and land your next role.
                 </p>
+                <p className="text-sm text-purple-600 dark:text-purple-400 mb-4">
+                  Try the <button onClick={() => setActiveTab('agent')} className="font-semibold hover:underline">AI Agent</button> for personalized job matching!
+                </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {['Software Engineer', 'Data Scientist', 'Product Manager', 'UX Designer'].map((term) => (
+                  {['Software Engineer', 'Data Scientist', 'AI Engineer', 'Product Manager'].map((term) => (
                     <button
                       key={term}
                       onClick={() => setPendingSearch({ keyword: term })}
@@ -254,6 +267,10 @@ function App() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'agent' && (
+          <AgentDashboard />
         )}
 
         {activeTab === 'saved' && (
