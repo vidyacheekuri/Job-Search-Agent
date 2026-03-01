@@ -1,516 +1,734 @@
-"""Evaluation framework for hiring simulation and agent performance metrics."""
+"""Evaluation framework for the Job Search Agent with hiring simulation metrics."""
 
 import json
-import random
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
 
-from ..scraper import Job
-from .profile import UserProfile
-from .ranker import RankedJob
-from .agent import ApplicationPackage, JobSearchAgent
-
 
 @dataclass
-class MockRecruiterFeedback:
-    """Simulated recruiter feedback on an application."""
-    application_id: str
-    resume_score: float  # 0-100
-    cover_letter_score: float  # 0-100
-    overall_impression: str  # "strong", "good", "average", "weak"
-    interview_decision: str  # "advance", "maybe", "reject"
-    strengths: list[str]
-    weaknesses: list[str]
-    feedback: str
-
-
-@dataclass
-class EvaluationMetrics:
-    """Metrics for evaluating agent performance."""
-    total_applications: int
-    
-    avg_match_score: float
-    avg_ats_score: float
-    avg_personalization_score: float
-    
-    interview_rate: float  # % of "advance" decisions
-    maybe_rate: float  # % of "maybe" decisions
-    rejection_rate: float  # % of "reject" decisions
-    
-    skill_coverage: float  # % of job skills matched
-    keyword_coverage: float  # % of job keywords in resume
-    
-    diversity_score: float  # variety in companies/roles
-    relevance_score: float  # how relevant jobs are to profile
-    
-    recruiter_feedback: list[MockRecruiterFeedback]
+class PipelineLog:
+    """Structured log entry for pipeline decisions."""
+    timestamp: str
+    stage: str
+    action: str
+    details: dict
     
     def to_dict(self) -> dict:
         return {
-            **asdict(self),
-            "recruiter_feedback": [asdict(f) for f in self.recruiter_feedback],
+            "timestamp": self.timestamp,
+            "stage": self.stage,
+            "action": self.action,
+            "details": self.details,
         }
 
 
 @dataclass
-class BiasAnalysis:
-    """Analysis of potential biases in the job search agent."""
-    
-    location_bias: dict  # distribution of job locations
-    company_size_bias: dict  # distribution of company sizes
-    salary_range_bias: dict  # distribution of salary ranges
-    experience_level_bias: dict  # distribution of experience levels
-    
-    keyword_frequency: dict  # most common keywords in selected jobs
-    excluded_keywords: list[str]  # keywords that might exclude diverse candidates
-    
-    recommendations: list[str]  # suggestions to reduce bias
+class EvaluationResult:
+    """Results from evaluation metrics."""
+    precision_at_k: float
+    interview_yield: float
+    total_jobs_searched: int
+    jobs_after_faang_filter: int
+    jobs_after_startup_filter: int
+    jobs_after_location_filter: int
+    top_k_jobs: list
+    human_ratings: list = field(default_factory=list)
+    tailoring_scores: list = field(default_factory=list)
     
     def to_dict(self) -> dict:
-        return asdict(self)
+        return {
+            "precision_at_k": self.precision_at_k,
+            "interview_yield": self.interview_yield,
+            "total_jobs_searched": self.total_jobs_searched,
+            "jobs_after_faang_filter": self.jobs_after_faang_filter,
+            "jobs_after_startup_filter": self.jobs_after_startup_filter,
+            "jobs_after_location_filter": self.jobs_after_location_filter,
+            "top_k_jobs": self.top_k_jobs,
+            "human_ratings": self.human_ratings,
+            "tailoring_scores": self.tailoring_scores,
+        }
 
 
-class MockRecruiter:
+class PipelineLogger:
     """
-    Simulates recruiter evaluation of applications.
-    Uses heuristics to provide realistic feedback.
+    Logger for tracking all pipeline decisions and rationales.
+    Required for the assignment's decision logging requirement.
     """
     
-    STRONG_INDICATORS = [
-        "quantifiable results",
-        "relevant experience",
-        "matching skills",
-        "clear progression",
-        "specific achievements",
-        "industry knowledge",
-        "leadership experience",
-    ]
+    def __init__(self):
+        self.logs: list[PipelineLog] = []
+        self.stage_counts = {
+            "search": 0,
+            "filter_faang": 0,
+            "filter_startup": 0,
+            "filter_location": 0,
+            "rank": 0,
+            "tailor": 0,
+        }
     
-    WEAK_INDICATORS = [
-        "generic language",
-        "missing keywords",
-        "no metrics",
-        "unclear experience",
-        "skill gaps",
-        "format issues",
-        "too short/long",
-    ]
-    
-    def __init__(self, strictness: float = 0.5):
+    def log(self, stage: str, action: str, details: dict) -> None:
         """
-        Initialize mock recruiter.
+        Log a pipeline decision.
         
         Args:
-            strictness: How strict the recruiter is (0-1).
-                        Higher = more rejections.
+            stage: Pipeline stage (search, filter_faang, filter_startup, rank, tailor)
+            action: Action taken (included, excluded, ranked, tailored)
+            details: Additional details about the decision
         """
-        self.strictness = strictness
+        entry = PipelineLog(
+            timestamp=datetime.now().isoformat(),
+            stage=stage,
+            action=action,
+            details=details,
+        )
+        self.logs.append(entry)
+        
+        if stage in self.stage_counts:
+            self.stage_counts[stage] += 1
     
-    def evaluate_resume(self, application: ApplicationPackage) -> tuple[float, list[str], list[str]]:
-        """Evaluate resume quality."""
-        score = 50.0
-        strengths = []
-        weaknesses = []
-        
-        ats_score = application.tailored_resume.ats_score
-        score += (ats_score - 50) * 0.3
-        
-        if ats_score >= 70:
-            strengths.append("Strong keyword optimization")
-        elif ats_score < 40:
-            weaknesses.append("Missing important keywords")
-        
-        matched_skills = len(application.ranked_job.matched_skills)
-        if matched_skills >= 5:
-            score += 15
-            strengths.append(f"Excellent skill match ({matched_skills} skills)")
-        elif matched_skills >= 3:
-            score += 8
-            strengths.append("Good skill alignment")
-        else:
-            score -= 10
-            weaknesses.append("Limited skill match")
-        
-        missing_skills = application.ranked_job.missing_skills
-        if missing_skills:
-            score -= len(missing_skills) * 2
-            if len(missing_skills) >= 3:
-                weaknesses.append(f"Missing key skills: {', '.join(missing_skills[:3])}")
-        
-        experience = application.tailored_resume.experience_bullets
-        if experience:
-            has_metrics = any(
-                any(c.isdigit() for c in str(exp.get("highlights", [])))
-                for exp in experience
-            )
-            if has_metrics:
-                score += 10
-                strengths.append("Includes quantifiable achievements")
-            else:
-                weaknesses.append("Could add more metrics")
-        
-        score += (application.ranked_job.score - 50) * 0.2
-        
-        score = max(0, min(100, score))
-        
-        score -= self.strictness * 10
-        
-        return score, strengths, weaknesses
+    def log_search(self, query: str, source: str, num_results: int) -> None:
+        """Log a search operation."""
+        self.log("search", "SEARCH", {
+            "query": query,
+            "source": source,
+            "results_found": num_results,
+        })
     
-    def evaluate_cover_letter(self, application: ApplicationPackage) -> tuple[float, list[str], list[str]]:
-        """Evaluate cover letter quality."""
-        score = 50.0
-        strengths = []
-        weaknesses = []
-        
-        personalization = application.cover_letter.personalization_score
-        score += (personalization - 50) * 0.4
-        
-        if personalization >= 70:
-            strengths.append("Well personalized to company")
-        elif personalization < 40:
-            weaknesses.append("Could be more personalized")
-        
-        word_count = application.cover_letter.word_count
-        if 250 <= word_count <= 400:
-            score += 10
-            strengths.append("Appropriate length")
-        elif word_count < 150:
-            score -= 15
-            weaknesses.append("Too brief")
-        elif word_count > 500:
-            score -= 10
-            weaknesses.append("Could be more concise")
-        
-        content = application.cover_letter.content.lower()
-        if application.job.company.lower() in content:
-            score += 8
-        else:
-            weaknesses.append("Should mention company more")
-        
-        action_words = ["achieved", "delivered", "built", "led", "developed", "improved"]
-        action_count = sum(1 for w in action_words if w in content)
-        if action_count >= 2:
-            score += 8
-            strengths.append("Strong action-oriented language")
-        
-        score = max(0, min(100, score))
-        score -= self.strictness * 8
-        
-        return score, strengths, weaknesses
+    def log_filter(self, stage: str, job_title: str, company: str, 
+                   included: bool, reason: str) -> None:
+        """Log a filter decision."""
+        self.log(stage, "INCLUDED" if included else "EXCLUDED", {
+            "job": job_title,
+            "company": company,
+            "reason": reason,
+        })
     
-    def make_decision(self, resume_score: float, cover_letter_score: float) -> str:
-        """Make interview decision based on scores."""
-        combined_score = resume_score * 0.6 + cover_letter_score * 0.4
-        
-        combined_score += random.uniform(-5, 5)
-        
-        threshold_advance = 65 - (self.strictness * 10)
-        threshold_maybe = 50 - (self.strictness * 5)
-        
-        if combined_score >= threshold_advance:
-            return "advance"
-        elif combined_score >= threshold_maybe:
-            return "maybe"
-        else:
-            return "reject"
+    def log_rank(self, job_title: str, company: str, score: float, 
+                 rank: int, reasons: list[str]) -> None:
+        """Log a ranking decision."""
+        self.log("rank", "RANKED", {
+            "job": job_title,
+            "company": company,
+            "score": score,
+            "rank": rank,
+            "match_reasons": reasons,
+        })
     
-    def evaluate(self, application: ApplicationPackage) -> MockRecruiterFeedback:
-        """
-        Evaluate a complete application.
-        
-        Args:
-            application: Application package to evaluate.
-            
-        Returns:
-            MockRecruiterFeedback with scores and decision.
-        """
-        resume_score, resume_strengths, resume_weaknesses = self.evaluate_resume(application)
-        cl_score, cl_strengths, cl_weaknesses = self.evaluate_cover_letter(application)
-        
-        decision = self.make_decision(resume_score, cl_score)
-        
-        combined = (resume_score + cl_score) / 2
-        if combined >= 70:
-            impression = "strong"
-        elif combined >= 55:
-            impression = "good"
-        elif combined >= 40:
-            impression = "average"
-        else:
-            impression = "weak"
-        
-        strengths = resume_strengths + cl_strengths
-        weaknesses = resume_weaknesses + cl_weaknesses
-        
-        feedback_templates = {
-            "advance": f"Strong candidate for {application.job.position}. Recommend moving forward with interview.",
-            "maybe": f"Potential fit for {application.job.position}. Consider for second review or different role.",
-            "reject": f"Does not meet requirements for {application.job.position} at this time.",
+    def log_tailor(self, job_title: str, company: str, 
+                   document_type: str, changes_made: list[str]) -> None:
+        """Log a tailoring operation."""
+        self.log("tailor", "TAILORED", {
+            "job": job_title,
+            "company": company,
+            "document_type": document_type,
+            "changes_made": changes_made,
+        })
+    
+    def get_summary(self) -> dict:
+        """Get a summary of all pipeline operations."""
+        return {
+            "total_logs": len(self.logs),
+            "stage_counts": self.stage_counts,
+            "stages_executed": [s for s, c in self.stage_counts.items() if c > 0],
+        }
+    
+    def export_trace(self, filepath: str) -> None:
+        """Export full pipeline trace for the report appendix."""
+        trace = {
+            "summary": self.get_summary(),
+            "logs": [log.to_dict() for log in self.logs],
         }
         
-        return MockRecruiterFeedback(
-            application_id=f"{application.job.company}_{application.job.position}"[:50],
-            resume_score=round(resume_score, 1),
-            cover_letter_score=round(cl_score, 1),
-            overall_impression=impression,
-            interview_decision=decision,
-            strengths=strengths[:5],
-            weaknesses=weaknesses[:5],
-            feedback=feedback_templates[decision],
+        with open(filepath, 'w') as f:
+            json.dump(trace, f, indent=2)
+    
+    def get_logs_by_stage(self, stage: str) -> list[PipelineLog]:
+        """Get all logs for a specific stage."""
+        return [log for log in self.logs if log.stage == stage]
+
+
+class HiringSimulator:
+    """
+    Simulates hiring decisions for evaluation.
+    Computes Precision@K and Interview Yield metrics.
+    """
+    
+    def __init__(self, benchmark_path: Optional[str] = None):
+        """
+        Initialize with optional benchmark dataset.
+        
+        Args:
+            benchmark_path: Path to benchmark_jobs.json
+        """
+        self.benchmark = None
+        self.interview_worthy_ids = set()
+        self.reject_ids = set()
+        
+        if benchmark_path:
+            self.load_benchmark(benchmark_path)
+    
+    def load_benchmark(self, filepath: str) -> None:
+        """Load the benchmark dataset."""
+        with open(filepath, 'r') as f:
+            self.benchmark = json.load(f)
+        
+        self.interview_worthy_ids = {
+            job["id"] for job in self.benchmark.get("interview_worthy", [])
+        }
+        self.reject_ids = {
+            job["id"] for job in self.benchmark.get("reject", [])
+        }
+    
+    def compute_precision_at_k(self, shortlist: list[dict], k: int = 10) -> float:
+        """
+        Compute Precision@K: how many of the top K are interview-worthy.
+        
+        Args:
+            shortlist: List of ranked jobs (should have 'id' field)
+            k: Number of top jobs to consider
+            
+        Returns:
+            Precision@K score (0.0 to 1.0)
+        """
+        top_k = shortlist[:k]
+        
+        relevant_count = sum(
+            1 for job in top_k 
+            if job.get("id") in self.interview_worthy_ids
         )
+        
+        return relevant_count / k if k > 0 else 0.0
+    
+    def compute_interview_yield(self, human_ratings: list[dict]) -> float:
+        """
+        Compute Interview Yield from human ratings.
+        
+        Args:
+            human_ratings: List of {job_id, rater, interview_decision (yes/no)}
+            
+        Returns:
+            Interview yield (proportion of 'yes' decisions)
+        """
+        if not human_ratings:
+            return 0.0
+        
+        yes_count = sum(
+            1 for rating in human_ratings 
+            if rating.get("interview_decision", "").lower() == "yes"
+        )
+        
+        return yes_count / len(human_ratings)
+    
+    def simulate_human_rating(self, job: dict) -> dict:
+        """
+        Simulate a human rating decision based on benchmark labels.
+        Used for automated testing; real evaluation uses actual human ratings.
+        
+        Args:
+            job: Job dictionary with id field
+            
+        Returns:
+            Simulated rating decision
+        """
+        job_id = job.get("id", "")
+        
+        if job_id in self.interview_worthy_ids:
+            decision = "yes"
+            confidence = 0.9
+        elif job_id in self.reject_ids:
+            decision = "no"
+            confidence = 0.85
+        else:
+            decision = "maybe"
+            confidence = 0.5
+        
+        return {
+            "job_id": job_id,
+            "job_title": job.get("position", job.get("title", "")),
+            "company": job.get("company", ""),
+            "interview_decision": decision,
+            "confidence": confidence,
+            "simulated": True,
+        }
+    
+    def evaluate_shortlist(self, shortlist: list[dict], k: int = 10) -> dict:
+        """
+        Full evaluation of a job shortlist.
+        
+        Args:
+            shortlist: Ranked list of jobs
+            k: Number of top jobs for Precision@K
+            
+        Returns:
+            Complete evaluation metrics
+        """
+        precision = self.compute_precision_at_k(shortlist, k)
+        
+        simulated_ratings = [
+            self.simulate_human_rating(job) for job in shortlist[:k]
+        ]
+        interview_yield = self.compute_interview_yield(simulated_ratings)
+        
+        return {
+            "precision_at_k": precision,
+            "k": k,
+            "interview_yield": interview_yield,
+            "top_k_breakdown": {
+                "interview_worthy": sum(
+                    1 for job in shortlist[:k] 
+                    if job.get("id") in self.interview_worthy_ids
+                ),
+                "rejects": sum(
+                    1 for job in shortlist[:k] 
+                    if job.get("id") in self.reject_ids
+                ),
+                "unknown": sum(
+                    1 for job in shortlist[:k] 
+                    if job.get("id") not in self.interview_worthy_ids 
+                    and job.get("id") not in self.reject_ids
+                ),
+            },
+            "simulated_ratings": simulated_ratings,
+        }
+
+
+class TailoringEvaluator:
+    """Evaluator for resume and cover letter tailoring quality."""
+    
+    CRITERIA = [
+        "keyword_incorporation",
+        "relevance_to_job",
+        "professional_tone",
+        "specificity",
+        "ats_optimization",
+    ]
+    
+    def score_tailored_document(
+        self, 
+        original: str, 
+        tailored: str, 
+        job_description: str
+    ) -> dict:
+        """
+        Score a tailored document (heuristic-based).
+        
+        Args:
+            original: Original resume/cover letter text
+            tailored: Tailored version
+            job_description: Target job description
+            
+        Returns:
+            Scoring breakdown (1-5 scale)
+        """
+        job_keywords = self._extract_keywords(job_description)
+        
+        original_kw_count = sum(1 for kw in job_keywords if kw in original.lower())
+        tailored_kw_count = sum(1 for kw in job_keywords if kw in tailored.lower())
+        keyword_improvement = tailored_kw_count - original_kw_count
+        
+        keyword_score = min(5, 2 + keyword_improvement)
+        
+        tailored_lower = tailored.lower()
+        relevance_signals = [
+            "experience" in tailored_lower,
+            "skills" in tailored_lower,
+            any(kw in tailored_lower for kw in job_keywords[:5]),
+            len(tailored) > len(original) * 0.8,
+        ]
+        relevance_score = 1 + sum(relevance_signals)
+        
+        professional_signals = [
+            not any(word in tailored_lower for word in ["awesome", "amazing", "super"]),
+            "sincerely" in tailored_lower or "regards" in tailored_lower or "experience" in tailored_lower,
+            tailored[0].isupper() if tailored else False,
+            tailored.count("!") < 3,
+        ]
+        professional_score = 1 + sum(professional_signals)
+        
+        specificity_signals = [
+            any(char.isdigit() for char in tailored),
+            "%" in tailored,
+            "$" in tailored,
+            len(tailored.split()) > 100,
+        ]
+        specificity_score = 1 + sum(specificity_signals)
+        
+        ats_signals = [
+            tailored_kw_count >= 3,
+            len(tailored) > 500,
+            tailored.count("\n\n") >= 2,
+            not any(c in tailored for c in ["★", "●", "►"]),
+        ]
+        ats_score = 1 + sum(ats_signals)
+        
+        scores = {
+            "keyword_incorporation": keyword_score,
+            "relevance_to_job": relevance_score,
+            "professional_tone": professional_score,
+            "specificity": specificity_score,
+            "ats_optimization": ats_score,
+        }
+        
+        scores["overall"] = round(sum(scores.values()) / len(scores), 1)
+        scores["keywords_added"] = keyword_improvement
+        
+        return scores
+    
+    def _extract_keywords(self, text: str) -> list[str]:
+        """Extract important keywords from job description."""
+        common_words = {
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
+            "be", "have", "has", "had", "do", "does", "did", "will", "would",
+            "could", "should", "may", "might", "must", "shall", "can", "need",
+            "our", "we", "you", "your", "their", "this", "that", "these", "those",
+        }
+        
+        words = text.lower().split()
+        keywords = [
+            word.strip(".,;:!?()[]{}\"'") 
+            for word in words 
+            if len(word) > 3 and word.lower() not in common_words
+        ]
+        
+        return list(dict.fromkeys(keywords))[:20]
+
+
+def create_human_rating_form(shortlist: list[dict], output_path: str) -> None:
+    """
+    Create a human rating form for the benchmark evaluation.
+    
+    Args:
+        shortlist: List of jobs to rate
+        output_path: Path to save the form
+    """
+    form = {
+        "instructions": """
+Human Rating Form for Job Search Agent Evaluation
+
+Instructions for Raters:
+1. Review each job in the shortlist below
+2. For each job, decide: "Would you interview this candidate for this role?"
+3. Mark 'yes' or 'no' for each job
+4. Optionally add comments explaining your decision
+
+Rating Scale:
+- yes: This is a good match, candidate should be interviewed
+- no: This is not a good match, candidate should not be interviewed
+""",
+        "rater_name": "[YOUR NAME]",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "jobs_to_rate": [],
+    }
+    
+    for i, job in enumerate(shortlist, 1):
+        form["jobs_to_rate"].append({
+            "rank": i,
+            "position": job.get("position", job.get("title", "")),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "salary": job.get("salary", "Not specified"),
+            "match_score": job.get("score", "N/A"),
+            "interview_decision": "",
+            "comments": "",
+        })
+    
+    with open(output_path, 'w') as f:
+        json.dump(form, f, indent=2)
+
+
+def load_benchmark_as_jobs(benchmark_path: str) -> list[dict]:
+    """
+    Load benchmark jobs as a combined list for testing.
+    
+    Args:
+        benchmark_path: Path to benchmark_jobs.json
+        
+    Returns:
+        Combined list of all benchmark jobs
+    """
+    with open(benchmark_path, 'r') as f:
+        benchmark = json.load(f)
+    
+    all_jobs = []
+    all_jobs.extend(benchmark.get("interview_worthy", []))
+    all_jobs.extend(benchmark.get("reject", []))
+    
+    return all_jobs
+
+
+@dataclass
+class RecruiterFeedback:
+    """Simulated recruiter feedback on an application."""
+    application_id: str
+    resume_score: float
+    cover_letter_score: float
+    interview_decision: str
+    overall_impression: str
+    strengths: list[str]
+    weaknesses: list[str]
+
+
+@dataclass 
+class EvaluationMetrics:
+    """Metrics from agent evaluation."""
+    total_applications: int
+    avg_match_score: float
+    avg_ats_score: float
+    avg_personalization_score: float
+    interview_rate: float
+    maybe_rate: float
+    rejection_rate: float
+    skill_coverage: float
+    recruiter_feedback: list[RecruiterFeedback]
 
 
 class AgentEvaluator:
-    """
-    Evaluates the job search agent's performance
-    using mock hiring simulations.
-    """
+    """Evaluates agent performance through hiring simulation."""
     
     def __init__(self, recruiter_strictness: float = 0.5):
         """
         Initialize evaluator.
         
         Args:
-            recruiter_strictness: How strict mock recruiters should be.
+            recruiter_strictness: How strict the simulated recruiter is (0-1).
         """
-        self.recruiter = MockRecruiter(strictness=recruiter_strictness)
+        self.strictness = recruiter_strictness
     
-    def evaluate_applications(
-        self,
-        applications: list[ApplicationPackage],
-    ) -> EvaluationMetrics:
+    def evaluate_applications(self, applications: list) -> EvaluationMetrics:
         """
-        Evaluate a set of applications.
+        Evaluate a list of application packages.
         
         Args:
-            applications: List of application packages to evaluate.
+            applications: List of ApplicationPackage objects.
             
         Returns:
-            EvaluationMetrics with comprehensive analysis.
+            EvaluationMetrics with scores and feedback.
         """
         if not applications:
-            raise ValueError("No applications to evaluate")
+            return EvaluationMetrics(
+                total_applications=0,
+                avg_match_score=0,
+                avg_ats_score=0,
+                avg_personalization_score=0,
+                interview_rate=0,
+                maybe_rate=0,
+                rejection_rate=0,
+                skill_coverage=0,
+                recruiter_feedback=[],
+            )
         
         feedback_list = []
-        for app in applications:
-            feedback = self.recruiter.evaluate(app)
+        interview_count = 0
+        maybe_count = 0
+        reject_count = 0
+        
+        for i, app in enumerate(applications):
+            feedback = self._simulate_recruiter_review(app, i)
             feedback_list.append(feedback)
+            
+            if feedback.interview_decision == "interview":
+                interview_count += 1
+            elif feedback.interview_decision == "maybe":
+                maybe_count += 1
+            else:
+                reject_count += 1
         
-        avg_match = sum(a.ranked_job.score for a in applications) / len(applications)
-        avg_ats = sum(a.tailored_resume.ats_score for a in applications) / len(applications)
-        avg_personalization = sum(a.cover_letter.personalization_score for a in applications) / len(applications)
-        
-        decisions = [f.interview_decision for f in feedback_list]
-        interview_rate = decisions.count("advance") / len(decisions) * 100
-        maybe_rate = decisions.count("maybe") / len(decisions) * 100
-        rejection_rate = decisions.count("reject") / len(decisions) * 100
-        
-        total_matched = sum(len(a.ranked_job.matched_skills) for a in applications)
-        total_possible = sum(
-            len(a.ranked_job.matched_skills) + len(a.ranked_job.missing_skills)
-            for a in applications
-        )
-        skill_coverage = (total_matched / total_possible * 100) if total_possible else 0
-        
-        keyword_coverage = avg_ats
-        
-        companies = set(a.job.company for a in applications)
-        positions = set(a.job.position for a in applications)
-        diversity_score = (len(companies) + len(positions)) / (len(applications) * 2) * 100
-        
-        relevance_score = avg_match
+        total = len(applications)
         
         return EvaluationMetrics(
-            total_applications=len(applications),
-            avg_match_score=round(avg_match, 1),
-            avg_ats_score=round(avg_ats, 1),
-            avg_personalization_score=round(avg_personalization, 1),
-            interview_rate=round(interview_rate, 1),
-            maybe_rate=round(maybe_rate, 1),
-            rejection_rate=round(rejection_rate, 1),
-            skill_coverage=round(skill_coverage, 1),
-            keyword_coverage=round(keyword_coverage, 1),
-            diversity_score=round(diversity_score, 1),
-            relevance_score=round(relevance_score, 1),
+            total_applications=total,
+            avg_match_score=sum(a.ranked_job.score for a in applications) / total,
+            avg_ats_score=sum(a.tailored_resume.ats_score for a in applications) / total,
+            avg_personalization_score=sum(a.cover_letter.personalization_score for a in applications) / total,
+            interview_rate=interview_count / total,
+            maybe_rate=maybe_count / total,
+            rejection_rate=reject_count / total,
+            skill_coverage=sum(len(a.ranked_job.matched_skills) for a in applications) / (total * 5),
             recruiter_feedback=feedback_list,
         )
     
-    def run_hiring_simulation(
-        self,
-        agent: JobSearchAgent,
-        keyword: str = "AI Engineer",
-        location: str = "",
-        num_applications: int = 10,
-        num_simulations: int = 3,
-    ) -> dict:
-        """
-        Run multiple hiring simulations to evaluate agent.
+    def _simulate_recruiter_review(self, app, index: int) -> RecruiterFeedback:
+        """Simulate a recruiter reviewing an application."""
+        match_score = app.ranked_job.score
+        ats_score = app.tailored_resume.ats_score
+        personalization = app.cover_letter.personalization_score
         
-        Args:
-            agent: JobSearchAgent to evaluate.
-            keyword: Search keyword.
-            location: Search location.
-            num_applications: Applications per simulation.
-            num_simulations: Number of simulation runs.
-            
-        Returns:
-            Aggregated results across all simulations.
-        """
-        all_results = []
+        combined_score = (match_score * 0.4 + ats_score * 0.3 + personalization * 30) / 100
         
-        for i in range(num_simulations):
-            print(f"\n📊 Running simulation {i+1}/{num_simulations}...")
-            
-            agent.search(keyword=keyword, location=location, limit=50)
-            agent.filter_jobs(company_size="mid")
-            agent.rank_jobs(fetch_details=False)
-            applications = agent.generate_applications(top_n=num_applications)
-            
-            metrics = self.evaluate_applications(applications)
-            all_results.append(metrics)
-            
-            print(f"   Interview rate: {metrics.interview_rate}%")
-            print(f"   Avg match score: {metrics.avg_match_score}")
+        threshold_interview = 0.7 - (self.strictness * 0.2)
+        threshold_maybe = 0.5 - (self.strictness * 0.1)
         
-        avg_interview_rate = sum(r.interview_rate for r in all_results) / len(all_results)
-        avg_match = sum(r.avg_match_score for r in all_results) / len(all_results)
-        avg_ats = sum(r.avg_ats_score for r in all_results) / len(all_results)
+        if combined_score >= threshold_interview:
+            decision = "interview"
+            impression = "Strong candidate with relevant experience"
+        elif combined_score >= threshold_maybe:
+            decision = "maybe"
+            impression = "Potential fit, needs more review"
+        else:
+            decision = "reject"
+            impression = "Does not meet current requirements"
         
-        return {
-            "num_simulations": num_simulations,
-            "applications_per_sim": num_applications,
-            "total_applications": num_simulations * num_applications,
-            "avg_interview_rate": round(avg_interview_rate, 1),
-            "avg_match_score": round(avg_match, 1),
-            "avg_ats_score": round(avg_ats, 1),
-            "simulation_results": [r.to_dict() for r in all_results],
-        }
+        strengths = []
+        if match_score >= 70:
+            strengths.append("Strong skill alignment")
+        if ats_score >= 75:
+            strengths.append("Well-formatted resume")
+        if personalization >= 3:
+            strengths.append("Personalized cover letter")
+        if app.ranked_job.matched_skills:
+            strengths.append(f"Key skills: {', '.join(app.ranked_job.matched_skills[:3])}")
+        
+        weaknesses = []
+        if match_score < 60:
+            weaknesses.append("Limited skill match")
+        if app.ranked_job.missing_skills:
+            weaknesses.append(f"Missing: {', '.join(app.ranked_job.missing_skills[:2])}")
+        if personalization < 2:
+            weaknesses.append("Generic cover letter")
+        
+        return RecruiterFeedback(
+            application_id=f"app_{index}",
+            resume_score=ats_score,
+            cover_letter_score=personalization * 20,
+            interview_decision=decision,
+            overall_impression=impression,
+            strengths=strengths or ["Meets basic requirements"],
+            weaknesses=weaknesses or ["No significant concerns"],
+        )
+
+
+@dataclass
+class BiasAnalysisResult:
+    """Results from bias analysis."""
+    location_bias: dict
+    company_size_bias: dict
+    salary_range_bias: dict
+    experience_level_bias: dict
+    keyword_frequency: dict
+    excluded_keywords: list[str]
+    recommendations: list[str]
 
 
 class BiasAnalyzer:
-    """Analyzes potential biases in the job search agent."""
+    """Analyzes potential biases in job search and ranking."""
     
-    POTENTIALLY_BIASED_TERMS = [
-        "rockstar", "ninja", "guru", "young", "energetic",
-        "native speaker", "culture fit", "prestigious",
-    ]
-    
-    def analyze(
-        self,
-        jobs: list[Job],
-        ranked_jobs: list[RankedJob],
-        profile: UserProfile,
-    ) -> BiasAnalysis:
+    def analyze(self, jobs: list, ranked_jobs: list, profile) -> BiasAnalysisResult:
         """
-        Analyze potential biases in job selection.
+        Analyze biases in job search results.
         
         Args:
             jobs: All jobs found.
-            ranked_jobs: Jobs after ranking.
-            profile: User profile used for matching.
+            ranked_jobs: Ranked jobs.
+            profile: User profile.
             
         Returns:
-            BiasAnalysis with findings and recommendations.
+            BiasAnalysisResult with findings.
         """
         location_dist = {}
-        for job in ranked_jobs:
-            loc = job.job.location.split(",")[0].strip() if job.job.location else "Unknown"
-            location_dist[loc] = location_dist.get(loc, 0) + 1
+        for job in jobs:
+            loc = job.location if hasattr(job, 'location') else job.get('location', 'Unknown')
+            state = self._extract_state(loc)
+            location_dist[state] = location_dist.get(state, 0) + 1
         
-        company_sizes = {"small": 0, "mid": 0, "large": 0, "unknown": 0}
-        for job in ranked_jobs:
-            text = f"{job.job.company} {job.job.description or ''}".lower()
-            if any(kw in text for kw in ["startup", "seed", "series a"]):
-                company_sizes["small"] += 1
-            elif any(kw in text for kw in ["fortune", "enterprise", "global"]):
-                company_sizes["large"] += 1
-            elif any(kw in text for kw in ["series b", "series c", "growth"]):
-                company_sizes["mid"] += 1
-            else:
-                company_sizes["unknown"] += 1
+        ranked_locations = {}
+        for rj in ranked_jobs[:10]:
+            job = rj.job if hasattr(rj, 'job') else rj
+            loc = job.location if hasattr(job, 'location') else job.get('location', 'Unknown')
+            state = self._extract_state(loc)
+            ranked_locations[state] = ranked_locations.get(state, 0) + 1
         
-        salary_ranges = {"<80k": 0, "80-120k": 0, "120-160k": 0, ">160k": 0, "unknown": 0}
-        for job in ranked_jobs:
-            if not job.job.salary:
-                salary_ranges["unknown"] += 1
-                continue
+        company_size_dist = {
+            "small": 0,
+            "mid": 0,
+            "large": 0,
+            "unknown": 0,
+        }
+        
+        salary_dist = {
+            "<80k": 0,
+            "80k-120k": 0,
+            "120k-160k": 0,
+            "160k+": 0,
+            "not_specified": 0,
+        }
+        
+        experience_dist = {
+            "entry": 0,
+            "mid": 0,
+            "senior": 0,
+            "unknown": 0,
+        }
+        
+        for job in jobs:
+            desc = job.description if hasattr(job, 'description') else job.get('description', '')
+            desc = desc or ''
+            desc_lower = desc.lower()
             
-            import re
-            numbers = re.findall(r'\d+', job.job.salary.replace(",", ""))
-            if numbers:
-                salary = int(numbers[0])
-                if salary < 80:
-                    salary *= 1000
-                
-                if salary < 80000:
-                    salary_ranges["<80k"] += 1
-                elif salary < 120000:
-                    salary_ranges["80-120k"] += 1
-                elif salary < 160000:
-                    salary_ranges["120-160k"] += 1
-                else:
-                    salary_ranges[">160k"] += 1
+            if any(kw in desc_lower for kw in ["startup", "seed", "series a"]):
+                company_size_dist["small"] += 1
+            elif any(kw in desc_lower for kw in ["fortune 500", "enterprise", "multinational"]):
+                company_size_dist["large"] += 1
             else:
-                salary_ranges["unknown"] += 1
-        
-        exp_levels = {"entry": 0, "mid": 0, "senior": 0, "unknown": 0}
-        for job in ranked_jobs:
-            title = job.job.position.lower()
-            if any(kw in title for kw in ["senior", "sr.", "lead", "principal", "staff"]):
-                exp_levels["senior"] += 1
-            elif any(kw in title for kw in ["junior", "jr.", "entry", "associate"]):
-                exp_levels["entry"] += 1
+                company_size_dist["mid"] += 1
+            
+            if "senior" in desc_lower or "lead" in desc_lower:
+                experience_dist["senior"] += 1
+            elif "entry" in desc_lower or "junior" in desc_lower:
+                experience_dist["entry"] += 1
             else:
-                exp_levels["mid"] += 1
+                experience_dist["mid"] += 1
         
-        keyword_freq = {}
-        for job in ranked_jobs:
-            text = f"{job.job.position} {job.job.description or ''}".lower()
-            words = set(text.split())
-            for word in words:
+        keywords = {}
+        for job in jobs:
+            desc = job.description if hasattr(job, 'description') else job.get('description', '')
+            desc = desc or ''
+            for word in desc.lower().split():
                 if len(word) > 4:
-                    keyword_freq[word] = keyword_freq.get(word, 0) + 1
+                    keywords[word] = keywords.get(word, 0) + 1
         
-        top_keywords = sorted(keyword_freq.items(), key=lambda x: x[1], reverse=True)[:20]
+        top_keywords = dict(sorted(keywords.items(), key=lambda x: x[1], reverse=True)[:20])
         
-        found_biased_terms = []
-        for job in ranked_jobs:
-            text = f"{job.job.position} {job.job.description or ''}".lower()
-            for term in self.POTENTIALLY_BIASED_TERMS:
-                if term in text:
-                    found_biased_terms.append(term)
+        recommendations = [
+            "Consider expanding location preferences to increase job pool",
+            "Review FAANG blacklist to ensure it aligns with career goals",
+            "Monitor for potential bias in salary range filtering",
+            "Ensure experience level filters don't exclude valid opportunities",
+            "Regularly audit ranking weights for fairness",
+        ]
         
-        recommendations = []
-        
-        if len(location_dist) < 3 and len(ranked_jobs) > 5:
-            recommendations.append("Consider expanding location search to increase diversity of opportunities")
-        
-        if company_sizes["unknown"] > len(ranked_jobs) * 0.5:
-            recommendations.append("Many companies have unknown sizes - consider researching companies before applying")
-        
-        if salary_ranges["unknown"] > len(ranked_jobs) * 0.6:
-            recommendations.append("Most jobs don't list salaries - research market rates independently")
-        
-        if exp_levels["senior"] > len(ranked_jobs) * 0.7:
-            recommendations.append("Results skew heavily toward senior roles - ensure this matches your experience")
-        
-        if found_biased_terms:
-            recommendations.append(f"Some job postings contain potentially biased language: {', '.join(set(found_biased_terms))}")
-        
-        profile_skills = set(s.lower() for s in profile.get_all_skills())
-        matched_any = sum(1 for j in ranked_jobs if any(s in j.matched_skills for s in profile_skills))
-        if matched_any < len(ranked_jobs) * 0.3:
-            recommendations.append("Low skill match rate - consider updating profile with more relevant skills")
-        
-        return BiasAnalysis(
-            location_bias=location_dist,
-            company_size_bias=company_sizes,
-            salary_range_bias=salary_ranges,
-            experience_level_bias=exp_levels,
-            keyword_frequency=dict(top_keywords),
-            excluded_keywords=list(set(found_biased_terms)),
+        return BiasAnalysisResult(
+            location_bias={"all_jobs": location_dist, "top_ranked": ranked_locations},
+            company_size_bias=company_size_dist,
+            salary_range_bias=salary_dist,
+            experience_level_bias=experience_dist,
+            keyword_frequency=top_keywords,
+            excluded_keywords=["faang", "startup", "seed"],
             recommendations=recommendations,
         )
+    
+    def _extract_state(self, location: str) -> str:
+        """Extract state from location string."""
+        if not location:
+            return "Unknown"
+        
+        states = {
+            "CA": "California", "TX": "Texas", "NY": "New York",
+            "WA": "Washington", "MA": "Massachusetts", "CO": "Colorado",
+            "IL": "Illinois", "GA": "Georgia", "NC": "North Carolina",
+            "VA": "Virginia", "IA": "Iowa", "MN": "Minnesota",
+            "WI": "Wisconsin", "NE": "Nebraska", "IN": "Indiana",
+            "MI": "Michigan", "OH": "Ohio", "PA": "Pennsylvania",
+        }
+        
+        location_upper = location.upper()
+        for abbr, name in states.items():
+            if abbr in location_upper or name.upper() in location_upper:
+                return name
+        
+        if "remote" in location.lower():
+            return "Remote"
+        
+        return "Other"

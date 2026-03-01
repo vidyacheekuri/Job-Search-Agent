@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Job } from '../types/job';
 
 interface JobCardProps {
@@ -10,6 +10,12 @@ interface JobCardProps {
   onMarkApplied?: (job: Job) => void;
   onShowCompanyInfo?: (company: string) => void;
 }
+
+const SOURCE_BADGES: Record<string, { label: string; color: string; icon: string }> = {
+  linkedin: { label: 'LinkedIn', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: '💼' },
+  indeed: { label: 'Indeed', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: '🔍' },
+  greenhouse: { label: 'Greenhouse', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: '🌱' },
+};
 
 const estimateSalary = (position: string, location: string): string | null => {
   const positionLower = position.toLowerCase();
@@ -108,6 +114,14 @@ export const JobCard: React.FC<JobCardProps> = ({
           </div>
           
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-2.5 text-sm">
+            {/* Source Badge */}
+            {job.source && SOURCE_BADGES[job.source] && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_BADGES[job.source].color}`}>
+                <span>{SOURCE_BADGES[job.source].icon}</span>
+                {SOURCE_BADGES[job.source].label}
+              </span>
+            )}
+            
             <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

@@ -1,0 +1,240 @@
+{
+  "description": "20-job benchmark dataset for hiring simulation evaluation",
+  "created_for": "AI for Engineers - Group Assignment",
+  "labels": {
+    "interview_worthy": "Jobs that match the sample resume profile well (should be shortlisted)",
+    "reject": "Jobs that should be filtered out or ranked low"
+  },
+  
+  "interview_worthy": [
+    {
+      "id": "iw_001",
+      "position": "AI Engineer",
+      "company": "Midwest Manufacturing Co",
+      "location": "Des Moines, IA",
+      "salary": "$130,000 - $160,000",
+      "skills": ["Python", "TensorFlow", "MLflow", "Computer Vision"],
+      "description": "Mid-sized manufacturing company seeking AI Engineer to develop predictive maintenance solutions. 3-5 years experience required.",
+      "job_url": "https://example.com/job/iw001",
+      "reason_interview_worthy": "Perfect match: location, skills, experience level, mid-sized company"
+    },
+    {
+      "id": "iw_002",
+      "position": "Machine Learning Engineer",
+      "company": "AgriTech Solutions",
+      "location": "Cedar Rapids, IA",
+      "salary": "$120,000 - $150,000",
+      "skills": ["Python", "PyTorch", "AWS", "Data Pipelines"],
+      "description": "Growing agricultural technology company needs ML Engineer to build crop prediction models. Remote-friendly.",
+      "job_url": "https://example.com/job/iw002",
+      "reason_interview_worthy": "Strong match: Iowa location, agricultural domain experience, skills align"
+    },
+    {
+      "id": "iw_003",
+      "position": "Senior AI Engineer",
+      "company": "Regional Health Systems",
+      "location": "Chicago, IL",
+      "salary": "$140,000 - $170,000",
+      "skills": ["Python", "NLP", "TensorFlow", "Healthcare"],
+      "description": "Healthcare network seeking Senior AI Engineer for NLP applications. 4+ years experience.",
+      "job_url": "https://example.com/job/iw003",
+      "reason_interview_worthy": "Experience in healthcare NLP, location in preferred region, experience matches"
+    },
+    {
+      "id": "iw_004",
+      "position": "ML Engineer - Computer Vision",
+      "company": "Quality Manufacturing Inc",
+      "location": "Milwaukee, WI",
+      "salary": "$125,000 - $155,000",
+      "skills": ["Python", "Computer Vision", "TensorFlow", "Docker"],
+      "description": "200-employee manufacturing firm needs ML Engineer for quality control systems.",
+      "job_url": "https://example.com/job/iw004",
+      "reason_interview_worthy": "Computer vision experience, Midwest location, mid-sized company"
+    },
+    {
+      "id": "iw_005",
+      "position": "AI/ML Engineer",
+      "company": "Heartland Insurance",
+      "location": "Omaha, NE",
+      "salary": "$115,000 - $145,000",
+      "skills": ["Python", "Scikit-learn", "SQL", "MLflow"],
+      "description": "Regional insurance company building AI team. Looking for ML Engineer with 3+ years experience.",
+      "job_url": "https://example.com/job/iw005",
+      "reason_interview_worthy": "Nebraska in preferred locations, skills match, mid-sized company"
+    },
+    {
+      "id": "iw_006",
+      "position": "Applied Machine Learning Engineer",
+      "company": "Logistics Plus Midwest",
+      "location": "Indianapolis, IN",
+      "salary": "$120,000 - $150,000",
+      "skills": ["Python", "TensorFlow", "Kubernetes", "AWS"],
+      "description": "Mid-sized logistics company seeking ML Engineer for route optimization and demand forecasting.",
+      "job_url": "https://example.com/job/iw006",
+      "reason_interview_worthy": "Strong skills match, Midwest location, practical ML application"
+    },
+    {
+      "id": "iw_007",
+      "position": "AI Engineer - NLP",
+      "company": "Customer First Corp",
+      "location": "Remote (US)",
+      "salary": "$130,000 - $160,000",
+      "skills": ["Python", "NLP", "Transformers", "FastAPI"],
+      "description": "Building AI-powered customer service solutions. 300-employee company, fully remote.",
+      "job_url": "https://example.com/job/iw007",
+      "reason_interview_worthy": "Remote option, NLP experience, customer service chatbot project aligns"
+    },
+    {
+      "id": "iw_008",
+      "position": "Machine Learning Engineer",
+      "company": "Twin Cities Analytics",
+      "location": "Minneapolis, MN",
+      "salary": "$125,000 - $155,000",
+      "skills": ["Python", "PyTorch", "Spark", "MLflow"],
+      "description": "Data analytics firm expanding ML capabilities. 150 employees, established client base.",
+      "job_url": "https://example.com/job/iw008",
+      "reason_interview_worthy": "Minnesota in preferred locations, MLflow experience, mid-sized"
+    },
+    {
+      "id": "iw_009",
+      "position": "Senior ML Engineer",
+      "company": "Great Lakes Financial",
+      "location": "Detroit, MI",
+      "salary": "$135,000 - $165,000",
+      "skills": ["Python", "TensorFlow", "Fraud Detection", "SQL"],
+      "description": "Regional bank seeking Senior ML Engineer for fraud detection and risk modeling.",
+      "job_url": "https://example.com/job/iw009",
+      "reason_interview_worthy": "Fraud detection experience from internship, financial domain, Midwest"
+    },
+    {
+      "id": "iw_010",
+      "position": "AI Engineer",
+      "company": "Precision Agriculture LLC",
+      "location": "Lincoln, NE",
+      "salary": "$118,000 - $145,000",
+      "skills": ["Python", "Computer Vision", "GCP", "TensorFlow"],
+      "description": "Agricultural company using AI for crop analysis. 100+ employees, growth stage.",
+      "job_url": "https://example.com/job/iw010",
+      "reason_interview_worthy": "Agricultural yield prediction project aligns, Nebraska location, CV skills"
+    }
+  ],
+  
+  "reject": [
+    {
+      "id": "rj_001",
+      "position": "AI Research Scientist",
+      "company": "Google DeepMind",
+      "location": "Mountain View, CA",
+      "salary": "$250,000 - $400,000",
+      "skills": ["Python", "TensorFlow", "Research", "Publications"],
+      "description": "Leading AI research at the frontier. PhD required.",
+      "job_url": "https://example.com/job/rj001",
+      "reason_reject": "FAANG blacklist - Google/DeepMind"
+    },
+    {
+      "id": "rj_002",
+      "position": "Machine Learning Engineer",
+      "company": "Meta AI",
+      "location": "Menlo Park, CA",
+      "salary": "$200,000 - $350,000",
+      "skills": ["Python", "PyTorch", "Distributed Systems"],
+      "description": "Building ML infrastructure at scale.",
+      "job_url": "https://example.com/job/rj002",
+      "reason_reject": "FAANG blacklist - Meta/Facebook"
+    },
+    {
+      "id": "rj_003",
+      "position": "AI Engineer",
+      "company": "Amazon Web Services",
+      "location": "Seattle, WA",
+      "salary": "$180,000 - $280,000",
+      "skills": ["Python", "AWS", "SageMaker"],
+      "description": "Building AI services for AWS customers.",
+      "job_url": "https://example.com/job/rj003",
+      "reason_reject": "FAANG blacklist - Amazon"
+    },
+    {
+      "id": "rj_004",
+      "position": "ML Engineer",
+      "company": "Stealth AI Startup",
+      "location": "San Francisco, CA",
+      "salary": "Equity + $140,000",
+      "skills": ["Python", "LLMs", "Founding Team"],
+      "description": "Join our founding team! Series A startup, 12 employees.",
+      "job_url": "https://example.com/job/rj004",
+      "reason_reject": "Startup indicator - Series A, 12 employees, founding team"
+    },
+    {
+      "id": "rj_005",
+      "position": "AI/ML Engineer",
+      "company": "YC Startup W24",
+      "location": "Remote",
+      "salary": "$130,000 + Equity",
+      "skills": ["Python", "LLMs", "Full Stack"],
+      "description": "Y Combinator backed startup, pre-seed stage. Be employee #5!",
+      "job_url": "https://example.com/job/rj005",
+      "reason_reject": "Startup indicator - Y Combinator, pre-seed, employee #5"
+    },
+    {
+      "id": "rj_006",
+      "position": "Senior ML Engineer",
+      "company": "OpenAI",
+      "location": "San Francisco, CA",
+      "salary": "$300,000 - $500,000",
+      "skills": ["Python", "LLMs", "Research"],
+      "description": "Building the future of AI.",
+      "job_url": "https://example.com/job/rj006",
+      "reason_reject": "FAANG+ blacklist - OpenAI"
+    },
+    {
+      "id": "rj_007",
+      "position": "Junior Data Scientist",
+      "company": "Midwest Data Co",
+      "location": "Des Moines, IA",
+      "salary": "$65,000 - $80,000",
+      "skills": ["Python", "SQL", "Excel"],
+      "description": "Entry-level position for recent graduates.",
+      "job_url": "https://example.com/job/rj007",
+      "reason_reject": "Experience mismatch - Junior role, 4 years experience is overqualified"
+    },
+    {
+      "id": "rj_008",
+      "position": "AI Director",
+      "company": "Enterprise Corp",
+      "location": "New York, NY",
+      "salary": "$250,000 - $350,000",
+      "skills": ["Strategy", "Leadership", "10+ Years"],
+      "description": "VP-level position leading AI strategy. 10+ years experience required.",
+      "job_url": "https://example.com/job/rj008",
+      "reason_reject": "Experience mismatch - Director/VP level requires 10+ years"
+    },
+    {
+      "id": "rj_009",
+      "position": "ML Engineer",
+      "company": "Anthropic",
+      "location": "San Francisco, CA",
+      "salary": "$280,000 - $450,000",
+      "skills": ["Python", "AI Safety", "Research"],
+      "description": "Building safe AI systems.",
+      "job_url": "https://example.com/job/rj009",
+      "reason_reject": "FAANG+ blacklist - Anthropic"
+    },
+    {
+      "id": "rj_010",
+      "position": "AI Engineer",
+      "company": "Nvidia",
+      "location": "Santa Clara, CA",
+      "salary": "$200,000 - $300,000",
+      "skills": ["CUDA", "Python", "GPU Computing"],
+      "description": "Building AI accelerator software.",
+      "job_url": "https://example.com/job/rj010",
+      "reason_reject": "FAANG+ blacklist - Nvidia"
+    }
+  ],
+  
+  "evaluation_metrics": {
+    "precision_at_10": "Number of interview-worthy jobs in top 10 / 10",
+    "interview_yield": "Number of 'Yes' interview decisions from human raters / total rated",
+    "human_scoring": "3 humans rate shortlist with 'Interview? (Yes/No)'"
+  }
+}

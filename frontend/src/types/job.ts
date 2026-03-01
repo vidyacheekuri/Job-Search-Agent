@@ -11,7 +11,10 @@ export interface Job {
   skills?: string[] | null;
   apply_method?: string | null;
   applicant_count?: string | null;
+  source?: string;
 }
+
+export type JobSource = 'linkedin' | 'indeed' | 'greenhouse';
 
 export interface RankedJob {
   job: Job;
@@ -73,6 +76,24 @@ export interface SearchFilters {
   companySize: string;
   limit: number;
   details: boolean;
+  sources: JobSource[];
+}
+
+export interface MultiSourceSearchResponse {
+  jobs: Job[];
+  count: number;
+  keyword: string;
+  location: string;
+  sources: string[];
+  jobs_by_source: Record<string, number>;
+}
+
+export interface JobSourceInfo {
+  id: string;
+  name: string;
+  description: string;
+  features: string[];
+  companies?: string[];
 }
 
 export interface UserProfile {

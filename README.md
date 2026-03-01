@@ -1,6 +1,8 @@
-# AI Job Search Agent
+# Middle America Job Search Agent
 
-An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, with intelligent ranking, resume tailoring, cover letter generation, and hiring simulation evaluation.
+An autonomous AI agent for searching **AI Engineer jobs at mid-sized "Middle America" companies** (not big tech or startups). The agent filters out FAANG+, excludes startups, ranks jobs by profile match, and generates tailored application materials.
+
+**AI for Engineers - Group Assignment**
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![React](https://img.shields.io/badge/React-18-61DAFB.svg)
@@ -33,12 +35,13 @@ cd frontend && npm run dev
 
 ## Table of Contents
 - [Quick Start](#quick-start-tldr)
+- [Assignment Overview](#assignment-overview)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Web Interface](#web-interface)
-  - [Command Line](#command-line)
+  - [Middle America Pipeline](#middle-america-pipeline)
   - [API Endpoints](#api-endpoints)
 - [Agent Pipeline](#agent-pipeline)
 - [Evaluation Framework](#evaluation-framework)
@@ -46,7 +49,38 @@ cd frontend && npm run dev
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- [Demo Recording Guide](#demo-recording-guide)
+- [Submission Checklist](#submission-checklist)
+
+---
+
+## Assignment Overview
+
+This project implements an AI agent for the **"Middle America Job and Application Agent"** assignment.
+
+### Pipeline Steps
+1. **Search** job boards; extract title, company, location, skills, salary, URL
+2. **Filter**: Blacklist FAANG+; exclude startups (<50 employees heuristic)
+3. **Rank** top 10 by skill match, location preference, and recency
+4. **Tailor**: Generate customized resumes + cover letters for top 3 jobs
+
+### Sample Resume Profile
+- **Name**: Alex Johnson (Generic AI Engineer)
+- **Experience**: 4 years (Python, TensorFlow, MLflow)
+- **Location**: Des Moines, Iowa (Midwest preference)
+- **Target**: AI Engineer roles at mid-sized companies
+
+### Key Deliverables
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Design Document | ✅ | `docs/DESIGN_DOCUMENT.md` |
+| Implementation | ✅ | `linkedin_scraper/agent/` |
+| 20-Job Benchmark | ✅ | `data/benchmark_jobs.json` |
+| Sample Resume | ✅ | `data/sample_resume.json` |
+| Evaluation Metrics | ✅ | Precision@10, Interview Yield |
+| Ethics/Bias Analysis | ✅ | `docs/ETHICS.md` |
+| Report Template | ✅ | `docs/REPORT_TEMPLATE.md` |
+| Reflections Template | ✅ | `docs/REFLECTIONS_TEMPLATE.md` |
 
 ---
 
@@ -55,12 +89,22 @@ cd frontend && npm run dev
 ### Core Features
 | Feature | Description |
 |---------|-------------|
-| **Job Search** | Search LinkedIn for AI/ML engineering jobs |
-| **Company Size Filter** | Filter for small, mid-sized, or large companies |
+| **Multi-Source Search** | Search across LinkedIn, Indeed, and Greenhouse simultaneously |
+| **FAANG+ Blacklist** | Automatically exclude 40+ big tech companies (Google, Meta, Amazon, etc.) |
+| **Startup Filter** | Exclude startups (<50 employees) using heuristic detection |
+| **Location Filter** | Toggle-able state filter (Iowa-only, Texas-only, etc.) |
 | **AI-Powered Ranking** | Rank jobs by profile match (skills, title, location, experience) |
 | **Resume Tailoring** | Generate customized resumes for each job |
 | **Cover Letter Generation** | AI-generated personalized cover letters |
 | **ATS Optimization** | Score resumes for Applicant Tracking Systems |
+| **Decision Logging** | Full pipeline trace for every filter and rank decision |
+
+### Supported Job Sources
+| Source | Description |
+|--------|-------------|
+| **LinkedIn** | Professional job listings with Easy Apply support |
+| **Indeed** | General job listings with salary information |
+| **Greenhouse** | Direct job boards from 50+ tech companies (Anthropic, OpenAI, Stripe, etc.) |
 
 ### Web Dashboard Features
 | Feature | Description |
@@ -117,15 +161,22 @@ cd frontend && npm run dev
                            └──────────────────────────────────────┘
 ```
 
-### Agent Pipeline
+### Agent Pipeline (Middle America)
 
 ```
-1. SEARCH → 2. FILTER → 3. RANK → 4. TAILOR
-    │            │          │         │
-    ▼            ▼          ▼         ▼
- LinkedIn    Company     Profile   Resume +
-   Jobs       Size       Match    Cover Letter
+1. SEARCH → 2. FILTER FAANG → 3. FILTER STARTUPS → 4. FILTER LOCATION → 5. RANK TOP 10 → 6. TAILOR TOP 3
+     │             │                  │                    │                  │                │
+     ▼             ▼                  ▼                    ▼                  ▼                ▼
+  LinkedIn     Blacklist           <50 emp             Iowa/TX/          Profile          Resume +
+  Indeed       40+ cos             heuristic           Remote            Match           Cover Letter
+  Greenhouse
 ```
+
+### FAANG+ Blacklist (40+ companies)
+Google, Meta, Amazon, Apple, Netflix, Microsoft, OpenAI, Anthropic, Nvidia, Uber, Airbnb, Stripe, etc.
+
+### Startup Indicators
+"seed", "series a", "founding team", "Y Combinator", "employee #5", etc.
 
 ---
 
@@ -291,7 +342,10 @@ python api/main.py
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Health check |
-| GET | `/api/search` | Search jobs with filters |
+| GET | `/api/search` | Search LinkedIn jobs with filters |
+| GET | `/api/search/multi` | Search multiple sources (LinkedIn, Indeed, Greenhouse) |
+| GET | `/api/sources` | Get available job sources |
+| GET | `/api/sources/greenhouse/companies` | List Greenhouse companies |
 | POST | `/api/profile` | Create user profile |
 | POST | `/api/profile/parse` | Parse resume text |
 | POST | `/api/profile/upload-pdf` | Upload and parse PDF resume |
@@ -374,32 +428,59 @@ For each top job:
 
 ## Evaluation Framework
 
+### Benchmark Dataset
+A 20-job ground-truth benchmark for evaluation (`data/benchmark_jobs.json`):
+- **10 Interview-Worthy**: Jobs matching the sample profile (mid-sized, Midwest, skills align)
+- **10 Rejects**: FAANG companies, startups, experience mismatches
+
+### Core Metrics
+
+| Metric | Formula | Description |
+|--------|---------|-------------|
+| **Precision@10** | Interview-worthy in top 10 / 10 | How many top-ranked jobs are actually good matches |
+| **Interview Yield** | Human "Yes" ratings / Total rated | Human evaluation of shortlist quality |
+
 ### Hiring Simulation
 The evaluator simulates recruiter review:
 
 ```python
-from linkedin_scraper.agent import JobSearchAgent, AgentEvaluator
+from linkedin_scraper.agent import JobSearchAgent, HiringSimulator
 
-# Create agent with profile
+# Load benchmark
+simulator = HiringSimulator("data/benchmark_jobs.json")
+
+# Run agent pipeline
 agent = JobSearchAgent(profile)
-evaluator = AgentEvaluator(recruiter_strictness=0.5)
+results = agent.run_middle_america_pipeline(
+    keyword="AI Engineer",
+    location="Iowa",
+    exclude_faang=True,
+    exclude_startups=True,
+)
 
-# Run evaluation
-agent.run_full_pipeline(keyword="AI Engineer", top_n_applications=10)
-metrics = evaluator.evaluate_applications(agent.get_applications())
+# Evaluate shortlist
+eval_results = simulator.evaluate_shortlist(results["ranking"]["top_jobs"], k=10)
+print(f"Precision@10: {eval_results['precision_at_k']}")
+print(f"Interview Yield: {eval_results['interview_yield']}")
+```
 
-print(f"Interview Rate: {metrics.interview_rate}%")
-print(f"Average Match Score: {metrics.avg_match_score}")
-print(f"ATS Score: {metrics.avg_ats_score}")
+### Human Rating Form
+Generate a form for 3 human raters:
+```python
+from linkedin_scraper.agent import create_human_rating_form
+
+create_human_rating_form(
+    shortlist=top_10_jobs,
+    output_path="human_rating_form.json"
+)
 ```
 
 ### Metrics Tracked
-- Interview rate (% advancing)
-- Resume scores
-- Cover letter scores
-- Skill coverage
-- ATS optimization
-- Recruiter feedback
+- **Precision@10**: Core metric for ranking quality
+- **Interview Yield**: Human rater consensus
+- **ATS Score**: Resume compatibility (0-100)
+- **Personalization Score**: Cover letter quality (0-100)
+- **Skill Coverage**: % of required skills matched
 
 ---
 
@@ -431,18 +512,21 @@ linkedin-job-scraper/
 │   ├── __init__.py
 │   ├── cli.py                 # Command line interface
 │   ├── scraper.py             # LinkedIn scraping logic
+│   ├── indeed_scraper.py      # Indeed scraping
+│   ├── greenhouse_scraper.py  # Greenhouse scraping
+│   ├── multi_scraper.py       # Multi-source orchestrator
 │   ├── exporter.py            # CSV/JSON export
 │   └── agent/                 # AI Agent module
 │       ├── __init__.py
-│       ├── profile.py         # User profile management
-│       ├── ranker.py          # Job ranking algorithm
+│       ├── profile.py         # User profile + PDF parsing
+│       ├── ranker.py          # Ranking + FAANG blacklist + startup filter
 │       ├── resume_tailor.py   # Resume generation
 │       ├── cover_letter.py    # Cover letter generation
-│       ├── agent.py           # Main agent orchestrator
-│       └── evaluation.py      # Hiring simulation
+│       ├── agent.py           # Main agent + Middle America pipeline
+│       └── evaluation.py      # Precision@10, HiringSimulator, BiasAnalyzer
 │
 ├── api/                       # FastAPI backend
-│   └── main.py                # API endpoints
+│   └── main.py                # API endpoints (30+ routes)
 │
 ├── frontend/                  # React web application
 │   ├── src/
@@ -452,8 +536,15 @@ linkedin-job-scraper/
 │   │   └── types/             # TypeScript types
 │   └── package.json
 │
-├── docs/
-│   └── ETHICS.md              # Ethics documentation
+├── data/                      # Assignment data files
+│   ├── sample_resume.json     # Sample AI Engineer profile (3-5 yrs)
+│   └── benchmark_jobs.json    # 20-job benchmark (10 good, 10 reject)
+│
+├── docs/                      # Documentation
+│   ├── DESIGN_DOCUMENT.md     # Pipeline diagram + filter heuristics
+│   ├── REPORT_TEMPLATE.md     # 8-10 page report template
+│   ├── REFLECTIONS_TEMPLATE.md# Individual reflection template
+│   └── ETHICS.md              # Ethics + bias analysis
 │
 ├── requirements.txt           # Python dependencies
 ├── setup.py                   # Package configuration
@@ -547,15 +638,147 @@ If you're still having issues:
 
 ---
 
+## Demo Recording Guide
+
+Record an **8-10 minute demo video** covering these required segments:
+
+### Demo Script (with timestamps)
+
+| Segment | Duration | Content |
+|---------|----------|---------|
+| **0:00 - Introduction** | 30 sec | Project overview, team members |
+| **0:30 - Setup** | 1 min | Start backend + frontend, show both terminals |
+| **1:30 - Profile** | 1 min | Load sample resume OR upload PDF |
+| **2:30 - Fresh Query** | 2 min | Search "AI Engineer Iowa", show filters working |
+| **4:30 - Filter Toggle** | 1 min | Change from Iowa → Texas, show adaptation |
+| **5:30 - Top Job** | 1 min | Explain top match: "85% match, Texas, <30 days" |
+| **6:30 - Tailoring** | 2 min | Generate resume + cover letter for top 3, narrate changes |
+| **8:30 - Failure Case** | 1 min | Show one bug/issue + how team fixed it |
+| **9:30 - Conclusion** | 30 sec | Summarize, mention ethics |
+
+### Required Demonstrations
+
+1. **Fresh Query Run**
+   ```bash
+   # Run the Middle America pipeline
+   curl -X POST "http://localhost:8000/api/agent/middle-america?\
+   profile_id=sample_ai_engineer&\
+   keyword=AI%20Engineer&\
+   location=Iowa&\
+   exclude_faang=true&\
+   exclude_startups=true"
+   ```
+
+2. **Filter Toggle Test**
+   - First search: `location=Iowa`
+   - Second search: `location=Texas` (same query, different filter)
+   - Show how results adapt to new location
+
+3. **Top Job Explanation**
+   - Point to match score (e.g., "85%")
+   - Explain: location match, skill overlap, recency
+   - Show FAANG jobs were excluded
+
+4. **Tailoring Narration**
+   - Show original resume
+   - Show tailored resume side-by-side
+   - Point out: keywords added, experience reordered, ATS score
+
+5. **Failure Case**
+   - Examples: Rate limiting, parsing error, wrong filter
+   - Show git commit where you fixed it
+   - Explain the solution
+
+### Recording Requirements
+- **Unlisted YouTube/Vimeo video** (share link only)
+- **Timestamped segments** in video description
+- Screen share with voiceover
+- All 5 team members should appear in narration
+
+### Recording Tips
+- Use OBS Studio, QuickTime, or Loom
+- 1080p resolution recommended
+- Test audio levels before recording
+- Keep under 10 minutes
+
+---
+
+## Individual Reflections
+
+Each team member must submit an individual reflection. Use the template at:
+- [`docs/REFLECTIONS_TEMPLATE.md`](docs/REFLECTIONS_TEMPLATE.md)
+
+Save your completed reflection as `REFLECTION_[YourName].md` in the `docs/` folder.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Areas of interest:
 
-- [ ] Additional job sources (Indeed, Glassdoor)
+- [x] Additional job sources (Indeed, Greenhouse) ✅
 - [ ] Improved skill matching (embeddings)
-- [x] PDF resume parsing
+- [x] PDF resume parsing ✅
 - [ ] Interview preparation module
 - [ ] Salary negotiation assistant
+
+---
+
+## Submission Checklist
+
+For the group assignment, ensure you have:
+
+### Code Repository
+- [x] Complete source code on GitHub
+- [x] Clear README with installation instructions  
+- [x] `requirements.txt` with all dependencies
+- [x] TAs can run code from scratch using only README
+
+### Design Document (2-3 pages)
+- [x] Pipeline diagram (visual flow) → `docs/DESIGN_DOCUMENT.md`
+- [x] Filter heuristics explained (FAANG blacklist, startup indicators)
+- [x] Tailoring workflow description
+
+### Implementation
+- [x] **Search**: Multi-source job scraping (LinkedIn, Indeed, Greenhouse)
+- [x] **Filter FAANG**: Blacklist 40+ big tech companies
+- [x] **Filter Startups**: Exclude <50 employees using heuristics
+- [x] **Filter Location**: Toggle-able state filter (Iowa/Texas/Remote)
+- [x] **Rank Top 10**: Weighted scoring (skills, title, location, experience)
+- [x] **Tailor Top 3**: Resume + cover letter generation
+- [x] **Decision Logging**: Full trace of all pipeline decisions
+
+### Evaluation (Core)
+- [x] 20-job benchmark dataset → `data/benchmark_jobs.json`
+  - [x] 10 interview-worthy jobs
+  - [x] 10 reject jobs (FAANG, startups, mismatches)
+- [x] Precision@10 metric computation
+- [x] Interview Yield metric
+- [x] Human rating form generation
+- [x] Tailoring quality scores (1-5 scale)
+- [x] Filter toggle experiment support (Iowa → Texas)
+
+### Report (8-10 pages)
+- [x] Report template → `docs/REPORT_TEMPLATE.md`
+- [x] Sections: Intro, Design, Eval Results, Bias/Ethics, Appendix
+
+### Demo Video (8-10 minutes)
+- [ ] Fresh query run with screen share + voiceover
+- [ ] Filter toggle demonstration (e.g., Texas → Iowa)
+- [ ] Top job explanation ("85% match, Texas, <30 days")
+- [ ] Tailor sample resume for top 3 jobs with narration
+- [ ] One failure case + how team fixed it
+- [ ] Unlisted video URL with timestamped segments
+
+### Individual Reflections (1 page each)
+- [ ] Each member completes `docs/REFLECTIONS_TEMPLATE.md`
+- [ ] Save as `REFLECTION_[YourName].md`
+- [ ] Personal role and contributions
+- [ ] Reflection on hiring equity impact
+
+### Peer Assessment
+- [ ] Each member submits scores and comments for teammates
+- [ ] Categories: contribution, communication, quality
 
 ### Development Setup
 

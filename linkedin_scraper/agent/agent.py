@@ -12,6 +12,7 @@ from .profile import UserProfile
 from .ranker import JobRanker, RankedJob
 from .resume_tailor import ResumeTailor, TailoredResume
 from .cover_letter import CoverLetterGenerator, CoverLetter
+from .evaluation import PipelineLogger, HiringSimulator, TailoringEvaluator
 
 
 @dataclass
@@ -136,6 +137,7 @@ class JobSearchAgent:
         use_openai: bool = False,
         openai_api_key: Optional[str] = None,
         scraper_delay: float = 1.0,
+        enable_logging: bool = True,
     ):
         """
         Initialize the job search agent.
@@ -145,6 +147,7 @@ class JobSearchAgent:
             use_openai: Whether to use OpenAI for generation.
             openai_api_key: OpenAI API key.
             scraper_delay: Delay between scraper requests.
+            enable_logging: Enable pipeline decision logging.
         """
         self.profile = profile
         self.scraper = LinkedInScraper(delay=scraper_delay)
@@ -156,6 +159,10 @@ class JobSearchAgent:
         self._filtered_results: list[Job] = []
         self._ranked_results: list[RankedJob] = []
         self._applications: list[ApplicationPackage] = []
+        
+        self.enable_logging = enable_logging
+        self.logger = PipelineLogger() if enable_logging else None
+        self.evaluator = TailoringEvaluator()
     
     def search(
         self,
@@ -267,6 +274,72 @@ class JobSearchAgent:
         
         self._filtered_results = filtered
         return filtered
+    
+    def filter_middle_america(
+        self,
+        jobs: Optional[list[Job]] = None,
+        exclude_faang: bool = True,
+        exclude_startups: bool = True,
+        location_filter: Optional[str] = None,
+    ) -> tuple[list[Job], list[dict]]:
+        """
+        Apply Middle America filters (FAANG blacklist + startup exclusion).
+        
+        Args:
+            jobs: Jobs to filter (uses search results if not provided).
+            exclude_faang: Exclude FAANG+ big tech companies.
+            exclude_startups: Exclude startups (<50 employees).
+            location_filter: Optional location filter (e.g., "Iowa", "Texas").
+            
+        Returns:
+            Tuple of (filtered jobs, decision log).
+        """
+        jobs = jobs or self._search_results
+        all_logs = []
+        
+        if exclude_faang:
+            jobs, faang_logs = JobRanker.filter_faang_blacklist(jobs, log_decisions=self.enable_logging)
+            all_logs.extend(faang_logs)
+            if self.logger:
+                for log in faang_logs:
+                    self.logger.log_filter(
+                        "filter_faang",
+                        log.get("job", ""),
+                        log.get("company", ""),
+                        log.get("action") == "INCLUDED",
+                        log.get("reason", ""),
+                    )
+        
+        if exclude_startups:
+            jobs, startup_logs = JobRanker.filter_startups(jobs, log_decisions=self.enable_logging)
+            all_logs.extend(startup_logs)
+            if self.logger:
+                for log in startup_logs:
+                    self.logger.log_filter(
+                        "filter_startup",
+                        log.get("job", ""),
+                        log.get("company", ""),
+                        log.get("action") == "INCLUDED",
+                        log.get("reason", ""),
+                    )
+        
+        if location_filter:
+            jobs, location_logs = JobRanker.filter_by_location(jobs, location_filter, log_decisions=self.enable_logging)
+            all_logs.extend(location_logs)
+            if self.logger:
+                for log in location_logs:
+                    self.logger.log_filter(
+                        "filter_location",
+                        log.get("job", ""),
+                        log.get("company", ""),
+                        log.get("action") == "INCLUDED",
+                        log.get("reason", ""),
+                    )
+        
+        jobs = JobRanker.filter_by_company_size(jobs, "mid")
+        
+        self._filtered_results = jobs
+        return jobs, all_logs
     
     def rank_jobs(
         self,
@@ -450,3 +523,158 @@ class JobSearchAgent:
     def get_applications(self) -> list[ApplicationPackage]:
         """Get all generated applications."""
         return self._applications
+    
+    def get_pipeline_log(self) -> dict:
+        """Get the pipeline decision log."""
+        if self.logger:
+            return {
+                "summary": self.logger.get_summary(),
+                "logs": [log.to_dict() for log in self.logger.logs],
+            }
+        return {"summary": {}, "logs": []}
+    
+    def export_pipeline_trace(self, filepath: str) -> None:
+        """Export pipeline trace for report appendix."""
+        if self.logger:
+            self.logger.export_trace(filepath)
+    
+    def run_middle_america_pipeline(
+        self,
+        keyword: str = "AI Engineer",
+        location: str = "Iowa",
+        exclude_faang: bool = True,
+        exclude_startups: bool = True,
+        location_filter: Optional[str] = None,
+        limit: int = 50,
+        top_n: int = 10,
+        top_n_applications: int = 3,
+        output_dir: Optional[str] = None,
+    ) -> dict:
+        """
+        Run the complete Middle America job search pipeline.
+        
+        Pipeline: Search → Filter FAANG → Filter Startups → Filter Location → Rank → Tailor
+        
+        Args:
+            keyword: Search keyword (default: "AI Engineer").
+            location: Search location.
+            exclude_faang: Exclude FAANG+ companies.
+            exclude_startups: Exclude startups.
+            location_filter: Additional location filter (e.g., "Iowa-only").
+            limit: Max search results.
+            top_n: Number of top jobs to rank.
+            top_n_applications: Number of applications to generate (top 3).
+            output_dir: Directory to save outputs.
+            
+        Returns:
+            Complete pipeline results with logs and metrics.
+        """
+        import time
+        start_time = time.time()
+        
+        print(f"🔍 Stage 1: Searching for '{keyword}' jobs in {location}...")
+        jobs = self.search(keyword=keyword, location=location, limit=limit)
+        print(f"   Found {len(jobs)} jobs")
+        if self.logger:
+            self.logger.log_search(keyword, "linkedin", len(jobs))
+        
+        print(f"🚫 Stage 2: Filtering FAANG+ and startups...")
+        filtered, filter_logs = self.filter_middle_america(
+            jobs,
+            exclude_faang=exclude_faang,
+            exclude_startups=exclude_startups,
+            location_filter=location_filter,
+        )
+        print(f"   {len(filtered)} jobs after filtering")
+        
+        print(f"📊 Stage 3: Ranking top {top_n} jobs by profile match...")
+        ranked = self.rank_jobs(top_n=top_n)
+        if self.logger:
+            for i, r in enumerate(ranked, 1):
+                self.logger.log_rank(
+                    r.job.position,
+                    r.job.company,
+                    r.score,
+                    i,
+                    r.match_reasons,
+                )
+        print(f"   Top match: {ranked[0].score}% - {ranked[0].job.position} at {ranked[0].job.company}" if ranked else "   No matches")
+        
+        print(f"📝 Stage 4: Generating {top_n_applications} application packages...")
+        applications = self.generate_applications(top_n=top_n_applications)
+        if self.logger:
+            for app in applications:
+                self.logger.log_tailor(
+                    app.job.position,
+                    app.job.company,
+                    "resume+cover_letter",
+                    app.tailored_resume.suggestions[:3] if app.tailored_resume.suggestions else [],
+                )
+        print(f"   Generated {len(applications)} applications")
+        
+        if output_dir:
+            print(f"💾 Saving outputs to {output_dir}...")
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            for app in applications:
+                app.save(output_dir)
+            self.export_pipeline_trace(os.path.join(output_dir, "pipeline_trace.json"))
+        
+        elapsed = time.time() - start_time
+        
+        results = {
+            "pipeline": "Middle America Job Search Agent",
+            "profile": self.profile.name,
+            "search": {
+                "keyword": keyword,
+                "location": location,
+                "total_found": len(jobs),
+            },
+            "filters": {
+                "exclude_faang": exclude_faang,
+                "exclude_startups": exclude_startups,
+                "location_filter": location_filter,
+                "jobs_after_filter": len(filtered),
+            },
+            "ranking": {
+                "top_n": top_n,
+                "top_jobs": [
+                    {
+                        "rank": i + 1,
+                        "position": r.job.position,
+                        "company": r.job.company,
+                        "location": r.job.location,
+                        "score": r.score,
+                        "match_reasons": r.match_reasons,
+                    }
+                    for i, r in enumerate(ranked[:top_n])
+                ],
+            },
+            "applications": {
+                "generated": len(applications),
+                "jobs": [
+                    {
+                        "position": app.job.position,
+                        "company": app.job.company,
+                        "ats_score": app.tailored_resume.ats_score,
+                    }
+                    for app in applications
+                ],
+            },
+            "metrics": {
+                "average_match_score": round(sum(r.score for r in ranked) / len(ranked), 1) if ranked else 0,
+                "average_ats_score": round(sum(a.tailored_resume.ats_score for a in applications) / len(applications), 1) if applications else 0,
+            },
+            "timing": {
+                "duration_seconds": round(elapsed, 2),
+                "timestamp": datetime.now().isoformat(),
+            },
+            "pipeline_log": self.get_pipeline_log() if self.enable_logging else None,
+        }
+        
+        if output_dir:
+            with open(os.path.join(output_dir, "pipeline_results.json"), "w") as f:
+                json.dump(results, f, indent=2)
+        
+        print(f"✅ Pipeline complete in {elapsed:.1f}s")
+        
+        return results

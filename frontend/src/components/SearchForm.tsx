@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { SearchFilters } from '../types/job';
+import type { SearchFilters, JobSource } from '../types/job';
 
 interface SearchFormProps {
   onSearch: (filters: SearchFilters) => void;
@@ -21,6 +21,13 @@ const defaultFilters: SearchFilters = {
   companySize: '',
   limit: 25,
   details: false,
+  sources: ['linkedin', 'indeed', 'greenhouse'],
+};
+
+const SOURCE_INFO: Record<JobSource, { name: string; color: string; icon: string }> = {
+  linkedin: { name: 'LinkedIn', color: 'bg-blue-500', icon: '💼' },
+  indeed: { name: 'Indeed', color: 'bg-purple-500', icon: '🔍' },
+  greenhouse: { name: 'Greenhouse', color: 'bg-green-500', icon: '🌱' },
 };
 
 export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, initialFilters }) => {
@@ -43,6 +50,17 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
       setFilters(prev => ({ ...prev, ...initialFilters }));
     }
   }, [initialFilters?.keyword, initialFilters?.location]);
+
+  const toggleSource = (source: JobSource) => {
+    const currentSources = filters.sources || [];
+    if (currentSources.includes(source)) {
+      if (currentSources.length > 1) {
+        updateFilter('sources', currentSources.filter(s => s !== source));
+      }
+    } else {
+      updateFilter('sources', [...currentSources, source]);
+    }
+  };
 
   const activeFilterCount = [
     filters.jobType,
@@ -108,6 +126,32 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
               </>
             )}
           </button>
+        </div>
+
+        {/* Job Sources */}
+        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Sources:</span>
+            {(Object.keys(SOURCE_INFO) as JobSource[]).map((source) => {
+              const info = SOURCE_INFO[source];
+              const isActive = filters.sources?.includes(source);
+              return (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => toggleSource(source)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? `${info.color} text-white shadow-sm`
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <span>{info.icon}</span>
+                  <span>{info.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">

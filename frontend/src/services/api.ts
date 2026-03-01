@@ -7,6 +7,8 @@ import type {
   CoverLetter,
   EvaluationMetrics,
   BiasAnalysis,
+  MultiSourceSearchResponse,
+  JobSourceInfo,
 } from '../types/job';
 
 const API_BASE = 'http://localhost:8000';
@@ -32,6 +34,54 @@ export async function searchJobs(filters: SearchFilters): Promise<SearchResponse
   
   if (!response.ok) {
     throw new Error(`Search failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function searchJobsMultiSource(filters: SearchFilters): Promise<MultiSourceSearchResponse> {
+  const params = new URLSearchParams();
+  
+  params.append('keyword', filters.keyword);
+  if (filters.location) params.append('location', filters.location);
+  if (filters.sources && filters.sources.length > 0) {
+    params.append('sources', filters.sources.join(','));
+  }
+  if (filters.jobType) params.append('job_type', filters.jobType);
+  if (filters.remote) params.append('remote', filters.remote);
+  if (filters.experience) params.append('experience', filters.experience);
+  if (filters.datePosted) params.append('date_posted', filters.datePosted);
+  if (filters.salary) params.append('salary', filters.salary);
+  if (filters.sortBy) params.append('sort_by', filters.sortBy);
+  if (filters.easyApply) params.append('easy_apply', 'true');
+  if (filters.companySize) params.append('company_size', filters.companySize);
+  params.append('limit', filters.limit.toString());
+  if (filters.details) params.append('details', 'true');
+
+  const response = await fetch(`${API_BASE}/api/search/multi?${params}`);
+  
+  if (!response.ok) {
+    throw new Error(`Multi-source search failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function getAvailableSources(): Promise<{ sources: JobSourceInfo[] }> {
+  const response = await fetch(`${API_BASE}/api/sources`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get sources: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function getGreenhouseCompanies(): Promise<{ companies: string[]; count: number }> {
+  const response = await fetch(`${API_BASE}/api/sources/greenhouse/companies`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get Greenhouse companies: ${response.statusText}`);
   }
   
   return response.json();

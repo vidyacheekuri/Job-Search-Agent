@@ -77,6 +77,32 @@ class JobRanker:
         "large": ["enterprise", "fortune 500", "large", "multinational", "global", "corporation"],
     }
     
+    # FAANG+ Big Tech blacklist for "Middle America" jobs assignment
+    FAANG_BLACKLIST = [
+        # FAANG
+        "facebook", "meta", "amazon", "apple", "netflix", "google", "alphabet",
+        # Extended Big Tech
+        "microsoft", "tesla", "nvidia", "openai", "anthropic", "deepmind",
+        "uber", "lyft", "airbnb", "stripe", "palantir", "snowflake",
+        "salesforce", "oracle", "ibm", "intel", "amd", "qualcomm",
+        "twitter", "x corp", "linkedin", "spotify", "pinterest", "snap",
+        "bytedance", "tiktok", "alibaba", "tencent", "baidu",
+        "adobe", "vmware", "servicenow", "workday", "splunk", "datadog",
+        "coinbase", "robinhood", "block", "square", "paypal",
+        "doordash", "instacart", "grubhub", "postmates",
+        "zoom", "slack", "dropbox", "box", "twilio", "cloudflare",
+    ]
+    
+    # Keywords indicating startup (<50 employees heuristic)
+    STARTUP_INDICATORS = [
+        "seed", "pre-seed", "series a", "early stage", "early-stage",
+        "founding", "co-founder", "first hire", "employee #",
+        "stealth", "pre-launch", "mvp", "bootstrap", "bootstrapped",
+        "10 employees", "20 employees", "small team", "tight-knit team",
+        "garage", "incubator", "accelerator", "y combinator", "yc",
+        "techstars", "500 startups",
+    ]
+    
     def __init__(self, profile: UserProfile):
         """
         Initialize ranker with user profile.
@@ -376,3 +402,161 @@ class JobRanker:
                     filtered.append(job)
         
         return filtered if filtered else jobs
+    
+    @staticmethod
+    def filter_faang_blacklist(jobs: list[Job], log_decisions: bool = False) -> tuple[list[Job], list[dict]]:
+        """
+        Filter out FAANG+ big tech companies.
+        
+        Args:
+            jobs: List of jobs to filter.
+            log_decisions: Whether to log filter decisions.
+            
+        Returns:
+            Tuple of (filtered jobs, decision log).
+        """
+        filtered = []
+        decision_log = []
+        
+        for job in jobs:
+            company_lower = job.company.lower()
+            
+            is_faang = any(faang in company_lower for faang in JobRanker.FAANG_BLACKLIST)
+            
+            if is_faang:
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "action": "EXCLUDED",
+                        "reason": "FAANG+ blacklist",
+                    })
+            else:
+                filtered.append(job)
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "action": "INCLUDED",
+                        "reason": "Not in FAANG+ blacklist",
+                    })
+        
+        return filtered, decision_log
+    
+    @staticmethod
+    def filter_startups(jobs: list[Job], log_decisions: bool = False) -> tuple[list[Job], list[dict]]:
+        """
+        Filter out startups (<50 employees heuristic).
+        
+        Args:
+            jobs: List of jobs to filter.
+            log_decisions: Whether to log filter decisions.
+            
+        Returns:
+            Tuple of (filtered jobs, decision log).
+        """
+        filtered = []
+        decision_log = []
+        
+        for job in jobs:
+            job_text = f"{job.company} {job.description or ''}".lower()
+            
+            is_startup = any(indicator in job_text for indicator in JobRanker.STARTUP_INDICATORS)
+            
+            if is_startup:
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "action": "EXCLUDED",
+                        "reason": "Startup indicator detected (<50 employees heuristic)",
+                    })
+            else:
+                filtered.append(job)
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "action": "INCLUDED",
+                        "reason": "No startup indicators",
+                    })
+        
+        return filtered, decision_log
+    
+    @staticmethod
+    def filter_middle_america(
+        jobs: list[Job], 
+        exclude_faang: bool = True,
+        exclude_startups: bool = True,
+        log_decisions: bool = False
+    ) -> tuple[list[Job], list[dict]]:
+        """
+        Filter for "Middle America" jobs - mid-sized companies, not big tech or startups.
+        
+        Args:
+            jobs: List of jobs to filter.
+            exclude_faang: Whether to exclude FAANG+ companies.
+            exclude_startups: Whether to exclude startups.
+            log_decisions: Whether to log all decisions.
+            
+        Returns:
+            Tuple of (filtered jobs, complete decision log).
+        """
+        all_logs = []
+        current_jobs = jobs
+        
+        if exclude_faang:
+            current_jobs, faang_logs = JobRanker.filter_faang_blacklist(current_jobs, log_decisions)
+            all_logs.extend(faang_logs)
+        
+        if exclude_startups:
+            current_jobs, startup_logs = JobRanker.filter_startups(current_jobs, log_decisions)
+            all_logs.extend(startup_logs)
+        
+        current_jobs = JobRanker.filter_by_company_size(current_jobs, "mid")
+        
+        return current_jobs, all_logs
+    
+    @staticmethod
+    def filter_by_location(jobs: list[Job], location_filter: str, log_decisions: bool = False) -> tuple[list[Job], list[dict]]:
+        """
+        Filter jobs by location (e.g., 'Iowa', 'Texas', 'Remote').
+        
+        Args:
+            jobs: List of jobs to filter.
+            location_filter: Location string to match.
+            log_decisions: Whether to log decisions.
+            
+        Returns:
+            Tuple of (filtered jobs, decision log).
+        """
+        filtered = []
+        decision_log = []
+        location_lower = location_filter.lower()
+        
+        for job in jobs:
+            job_location_lower = job.location.lower()
+            
+            matches = location_lower in job_location_lower or "remote" in job_location_lower
+            
+            if matches:
+                filtered.append(job)
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "location": job.location,
+                        "action": "INCLUDED",
+                        "reason": f"Matches location filter: {location_filter}",
+                    })
+            else:
+                if log_decisions:
+                    decision_log.append({
+                        "job": job.position,
+                        "company": job.company,
+                        "location": job.location,
+                        "action": "EXCLUDED",
+                        "reason": f"Does not match location filter: {location_filter}",
+                    })
+        
+        return filtered, decision_log

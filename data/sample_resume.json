@@ -1,0 +1,148 @@
+{
+  "name": "Alex Johnson",
+  "email": "alex.johnson@email.com",
+  "phone": "(555) 123-4567",
+  "location": "Des Moines, Iowa",
+  "linkedin_url": "https://www.linkedin.com/in/alexjohnson-ai",
+  "github_url": "https://github.com/alexjohnson-ai",
+  "portfolio_url": "",
+  
+  "title": "AI Engineer",
+  "summary": "AI Engineer with 4 years of experience developing and deploying machine learning models in production environments. Expertise in Python, TensorFlow, and MLflow for building end-to-end ML pipelines. Passionate about applying AI to solve real-world business problems in healthcare, manufacturing, and finance domains.",
+  "years_experience": 4,
+  
+  "skills": [
+    "Machine Learning",
+    "Deep Learning",
+    "Natural Language Processing",
+    "Computer Vision",
+    "Data Analysis",
+    "Model Deployment",
+    "A/B Testing",
+    "Statistical Analysis"
+  ],
+  "programming_languages": [
+    "Python",
+    "SQL",
+    "R",
+    "Java",
+    "Bash"
+  ],
+  "frameworks": [
+    "TensorFlow",
+    "PyTorch",
+    "Scikit-learn",
+    "Keras",
+    "Pandas",
+    "NumPy",
+    "Spark",
+    "MLflow",
+    "Kubeflow",
+    "FastAPI",
+    "Flask"
+  ],
+  "tools": [
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "GCP",
+    "Git",
+    "Jenkins",
+    "Airflow",
+    "Jupyter",
+    "VS Code",
+    "Linux"
+  ],
+  
+  "experience": [
+    {
+      "title": "AI Engineer",
+      "company": "MidWest Analytics Corp",
+      "location": "Des Moines, IA",
+      "duration": "2022 - Present",
+      "description": "Lead AI engineer developing machine learning solutions for manufacturing optimization.",
+      "highlights": [
+        "Developed predictive maintenance models reducing equipment downtime by 35%",
+        "Built end-to-end MLflow pipelines serving 10M+ predictions daily",
+        "Implemented computer vision system for quality control achieving 98% accuracy",
+        "Mentored team of 3 junior data scientists on ML best practices"
+      ]
+    },
+    {
+      "title": "Machine Learning Engineer",
+      "company": "HealthTech Solutions",
+      "location": "Chicago, IL",
+      "duration": "2020 - 2022",
+      "description": "Developed NLP models for healthcare documentation and patient care optimization.",
+      "highlights": [
+        "Created NLP pipeline processing 50K+ medical documents daily",
+        "Reduced patient readmission rates by 18% using predictive modeling",
+        "Deployed models on AWS SageMaker with 99.9% uptime",
+        "Collaborated with medical professionals to validate model outputs"
+      ]
+    },
+    {
+      "title": "Data Scientist Intern",
+      "company": "Regional Bank of Iowa",
+      "location": "Cedar Rapids, IA",
+      "duration": "2019 - 2020",
+      "description": "Built fraud detection and customer segmentation models.",
+      "highlights": [
+        "Developed fraud detection model saving $2M annually",
+        "Created customer churn prediction with 85% accuracy",
+        "Automated reporting dashboards using Python and Tableau"
+      ]
+    }
+  ],
+  
+  "education": [
+    {
+      "degree": "M.S. in Computer Science (Machine Learning)",
+      "school": "University of Iowa",
+      "year": "2020"
+    },
+    {
+      "degree": "B.S. in Mathematics",
+      "school": "Iowa State University",
+      "year": "2018"
+    }
+  ],
+  
+  "certifications": [
+    "AWS Certified Machine Learning - Specialty",
+    "TensorFlow Developer Certificate",
+    "Google Cloud Professional ML Engineer"
+  ],
+  
+  "projects": [
+    {
+      "name": "Agricultural Yield Prediction",
+      "description": "ML model predicting crop yields for Iowa farmers using satellite imagery and weather data",
+      "technologies": ["Python", "TensorFlow", "GCP", "Computer Vision"]
+    },
+    {
+      "name": "Customer Service Chatbot",
+      "description": "NLP-powered chatbot handling 10K+ customer queries monthly for regional retailer",
+      "technologies": ["Python", "Transformers", "FastAPI", "Docker"]
+    }
+  ],
+  
+  "target_roles": [
+    "AI Engineer",
+    "Machine Learning Engineer",
+    "ML Engineer",
+    "Senior AI Engineer",
+    "Applied Scientist"
+  ],
+  "target_companies": [],
+  "preferred_locations": [
+    "Iowa",
+    "Illinois",
+    "Minnesota",
+    "Wisconsin",
+    "Nebraska",
+    "Remote"
+  ],
+  "remote_preference": "flexible",
+  "min_salary": 120000
+}

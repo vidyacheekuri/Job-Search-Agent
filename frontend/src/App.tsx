@@ -11,7 +11,7 @@ import { ErrorMessage } from './components/ErrorMessage';
 import { CompanyInfoModal } from './components/CompanyInfoModal';
 import { useTheme } from './hooks/useTheme';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { searchJobs } from './services/api';
+import { searchJobsMultiSource } from './services/api';
 import type { Job, SearchFilters, SearchHistoryItem, SavedJob, AppliedJob } from './types/job';
 
 type Tab = 'search' | 'agent' | 'saved' | 'applications';
@@ -25,7 +25,7 @@ function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchMeta, setSearchMeta] = useState({ keyword: '', location: '' });
+  const [searchMeta, setSearchMeta] = useState({ keyword: '', location: '', sources: [] as string[], jobsBySource: {} as Record<string, number> });
   const [hasSearched, setHasSearched] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
@@ -51,9 +51,14 @@ function App() {
     setLastFilters(filters);
 
     try {
-      const response = await searchJobs(filters);
+      const response = await searchJobsMultiSource(filters);
       setJobs(response.jobs);
-      setSearchMeta({ keyword: response.keyword, location: response.location });
+      setSearchMeta({ 
+        keyword: response.keyword, 
+        location: response.location,
+        sources: response.sources,
+        jobsBySource: response.jobs_by_source,
+      });
 
       const historyItem: SearchHistoryItem = {
         id: Date.now().toString(),

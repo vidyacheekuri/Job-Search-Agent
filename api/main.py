@@ -13,6 +13,9 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from linkedin_scraper.scraper import LinkedInScraper, Job
+from linkedin_scraper.indeed_scraper import IndeedScraper
+from linkedin_scraper.greenhouse_scraper import GreenhouseScraper, GREENHOUSE_COMPANIES
+from linkedin_scraper.multi_scraper import MultiSourceScraper
 from linkedin_scraper.agent.profile import UserProfile, parse_resume_text, parse_pdf_resume
 from linkedin_scraper.agent.ranker import JobRanker, RankedJob
 from linkedin_scraper.agent.resume_tailor import ResumeTailor
@@ -64,12 +67,27 @@ class RankedJobResponse(BaseModel):
     match_reasons: list[str]
 
 
+class JobResponseWithSource(JobResponse):
+    """Job listing response with source information."""
+    source: Optional[str] = "linkedin"
+
+
 class SearchResponse(BaseModel):
     """Search results response model."""
     jobs: list[JobResponse]
     count: int
     keyword: str
     location: str
+
+
+class MultiSourceSearchResponse(BaseModel):
+    """Multi-source search results response model."""
+    jobs: list[JobResponseWithSource]
+    count: int
+    keyword: str
+    location: str
+    sources: list[str]
+    jobs_by_source: dict[str, int]
 
 
 class RankedSearchResponse(BaseModel):
@@ -267,6 +285,116 @@ async def search_jobs(
         keyword=keyword,
         location=location,
     )
+
+
+@app.get("/api/search/multi", response_model=MultiSourceSearchResponse)
+async def search_jobs_multi_source(
+    keyword: str = Query(..., description="Job title or keywords to search"),
+    location: str = Query("", description="City or region"),
+    sources: str = Query("linkedin,indeed,greenhouse", description="Comma-separated sources: linkedin, indeed, greenhouse"),
+    job_type: Optional[str] = Query(None, description="full-time, part-time, contract, etc."),
+    remote: Optional[str] = Query(None, description="on-site, remote, hybrid"),
+    experience: Optional[str] = Query(None, description="entry-level, senior, etc."),
+    date_posted: Optional[str] = Query(None, description="24hr, past-week, past-month"),
+    salary: Optional[str] = Query(None, description="Minimum salary"),
+    sort_by: str = Query("relevant", description="recent or relevant"),
+    easy_apply: bool = Query(False, description="Filter to Easy Apply only (LinkedIn)"),
+    company_size: Optional[str] = Query(None, description="small, mid, or large"),
+    limit: int = Query(25, ge=1, le=100, description="Max results per source (1-100)"),
+    details: bool = Query(False, description="Fetch full job descriptions"),
+):
+    """Search for jobs across multiple sources (LinkedIn, Indeed, Greenhouse)."""
+    source_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
+    valid_sources = [s for s in source_list if s in ["linkedin", "indeed", "greenhouse"]]
+    
+    if not valid_sources:
+        valid_sources = ["linkedin", "indeed", "greenhouse"]
+
+    scraper = MultiSourceScraper(sources=valid_sources)
+
+    date_posted_val = date_posted.replace("-", " ") if date_posted else ""
+    job_type_val = job_type.replace("-", " ") if job_type else ""
+    remote_val = remote.replace("-", " ") if remote else ""
+    experience_val = experience.replace("-", " ") if experience else ""
+
+    results = scraper.search(
+        keyword=keyword,
+        location=location,
+        date_posted=date_posted_val,
+        job_type=job_type_val,
+        remote=remote_val,
+        experience=experience_val,
+        salary=salary or "",
+        sort_by=sort_by,
+        easy_apply=easy_apply,
+        per_source_limit=limit,
+    )
+
+    all_jobs = []
+    jobs_by_source = {}
+    
+    for source, jobs in results.items():
+        if company_size:
+            jobs = JobRanker.filter_by_company_size(jobs, company_size)
+        
+        jobs_by_source[source] = len(jobs)
+        
+        for job in jobs:
+            if details:
+                scraper.fetch_job_details(job)
+            
+            job_response = job_to_response(job)
+            job_with_source = JobResponseWithSource(
+                **job_response.model_dump(),
+                source=source
+            )
+            all_jobs.append(job_with_source)
+
+    return MultiSourceSearchResponse(
+        jobs=all_jobs,
+        count=len(all_jobs),
+        keyword=keyword,
+        location=location,
+        sources=valid_sources,
+        jobs_by_source=jobs_by_source,
+    )
+
+
+@app.get("/api/sources")
+async def get_available_sources():
+    """Get list of available job sources."""
+    return {
+        "sources": [
+            {
+                "id": "linkedin",
+                "name": "LinkedIn",
+                "description": "Professional job listings from LinkedIn",
+                "features": ["easy_apply", "applicant_count", "company_size"]
+            },
+            {
+                "id": "indeed",
+                "name": "Indeed",
+                "description": "General job listings from Indeed",
+                "features": ["salary_info", "company_reviews"]
+            },
+            {
+                "id": "greenhouse",
+                "name": "Greenhouse",
+                "description": "Direct job boards from tech companies",
+                "features": ["direct_apply", "startup_jobs"],
+                "companies": list(GREENHOUSE_COMPANIES.keys())[:20]
+            }
+        ]
+    }
+
+
+@app.get("/api/sources/greenhouse/companies")
+async def get_greenhouse_companies():
+    """Get list of companies with Greenhouse job boards."""
+    return {
+        "companies": list(GREENHOUSE_COMPANIES.keys()),
+        "count": len(GREENHOUSE_COMPANIES)
+    }
 
 
 @app.post("/api/profile")
@@ -495,6 +623,151 @@ async def run_agent_pipeline(
             }
             for app in applications
         ],
+    }
+
+
+@app.post("/api/agent/middle-america")
+async def run_middle_america_pipeline(
+    profile_id: str = Query(..., description="Profile ID"),
+    keyword: str = Query("AI Engineer", description="Search keyword"),
+    location: str = Query("Iowa", description="Search location"),
+    exclude_faang: bool = Query(True, description="Exclude FAANG+ companies"),
+    exclude_startups: bool = Query(True, description="Exclude startups (<50 employees)"),
+    location_filter: Optional[str] = Query(None, description="Additional location filter (e.g., 'Texas')"),
+    limit: int = Query(50, description="Search limit"),
+    top_n: int = Query(10, description="Number of top jobs to rank"),
+    top_n_applications: int = Query(3, description="Number of applications to generate"),
+    use_openai: bool = Query(False, description="Use OpenAI"),
+):
+    """
+    Run the Middle America job search pipeline.
+    
+    Pipeline: Search → Filter FAANG → Filter Startups → Filter Location → Rank Top 10 → Tailor Top 3
+    
+    This pipeline is specifically designed for finding AI Engineer jobs at mid-sized
+    "Middle America" companies, excluding big tech (FAANG+) and startups.
+    """
+    if profile_id not in profile_store:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    profile = profile_store[profile_id]
+    agent = JobSearchAgent(profile, use_openai=use_openai, enable_logging=True)
+    
+    results = agent.run_middle_america_pipeline(
+        keyword=keyword,
+        location=location,
+        exclude_faang=exclude_faang,
+        exclude_startups=exclude_startups,
+        location_filter=location_filter,
+        limit=limit,
+        top_n=top_n,
+        top_n_applications=top_n_applications,
+    )
+    
+    applications = agent.get_applications()
+    
+    results["applications_detail"] = [
+        {
+            "job": job_to_response(app.job).__dict__,
+            "match_score": app.ranked_job.score,
+            "matched_skills": app.ranked_job.matched_skills,
+            "missing_skills": app.ranked_job.missing_skills,
+            "match_reasons": app.ranked_job.match_reasons,
+            "ats_score": app.tailored_resume.ats_score,
+            "resume_suggestions": app.tailored_resume.suggestions,
+            "cover_letter_preview": app.cover_letter.content[:500] + "..." if len(app.cover_letter.content) > 500 else app.cover_letter.content,
+            "personalization_score": app.cover_letter.personalization_score,
+        }
+        for app in applications
+    ]
+    
+    return results
+
+
+@app.get("/api/benchmark")
+async def get_benchmark_dataset():
+    """Get the 20-job benchmark dataset for evaluation."""
+    import os
+    benchmark_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "data",
+        "benchmark_jobs.json"
+    )
+    
+    if not os.path.exists(benchmark_path):
+        raise HTTPException(status_code=404, detail="Benchmark dataset not found")
+    
+    with open(benchmark_path, 'r') as f:
+        return json.load(f)
+
+
+@app.get("/api/sample-resume")
+async def get_sample_resume():
+    """Get the sample AI Engineer resume for evaluation."""
+    import os
+    resume_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "data",
+        "sample_resume.json"
+    )
+    
+    if not os.path.exists(resume_path):
+        raise HTTPException(status_code=404, detail="Sample resume not found")
+    
+    with open(resume_path, 'r') as f:
+        return json.load(f)
+
+
+@app.post("/api/agent/load-sample-profile")
+async def load_sample_profile():
+    """Load the sample AI Engineer profile for testing."""
+    import os
+    resume_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "data",
+        "sample_resume.json"
+    )
+    
+    if not os.path.exists(resume_path):
+        raise HTTPException(status_code=404, detail="Sample resume not found")
+    
+    with open(resume_path, 'r') as f:
+        data = json.load(f)
+    
+    profile = UserProfile(
+        name=data.get("name", ""),
+        email=data.get("email", ""),
+        phone=data.get("phone", ""),
+        location=data.get("location", ""),
+        linkedin_url=data.get("linkedin_url", ""),
+        github_url=data.get("github_url", ""),
+        portfolio_url=data.get("portfolio_url", ""),
+        title=data.get("title", ""),
+        summary=data.get("summary", ""),
+        years_experience=data.get("years_experience", 0),
+        skills=data.get("skills", []),
+        programming_languages=data.get("programming_languages", []),
+        frameworks=data.get("frameworks", []),
+        tools=data.get("tools", []),
+        experience=data.get("experience", []),
+        education=data.get("education", []),
+        certifications=data.get("certifications", []),
+        projects=data.get("projects", []),
+        target_roles=data.get("target_roles", []),
+        target_companies=data.get("target_companies", []),
+        preferred_locations=data.get("preferred_locations", []),
+        remote_preference=data.get("remote_preference", "flexible"),
+        min_salary=data.get("min_salary", 0),
+    )
+    
+    profile_id = "sample_ai_engineer"
+    profile_store[profile_id] = profile
+    
+    return {
+        "status": "success",
+        "profile_id": profile_id,
+        "profile": profile.to_dict(),
+        "message": "Sample AI Engineer profile loaded. Use profile_id='sample_ai_engineer' in API calls."
     }
 
 
