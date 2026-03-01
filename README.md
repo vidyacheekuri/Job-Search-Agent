@@ -810,7 +810,3 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 - GitHub: [@AdithyaReddyGeeda](https://github.com/AdithyaReddyGeeda)
 
 ---
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
