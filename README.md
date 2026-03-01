@@ -7,7 +7,32 @@ An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, wi
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
+## Quick Start (TL;DR)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
+cd Linkedin-job-scraper
+pip install -r requirements.txt
+
+# 2. Install frontend
+cd frontend && npm install && cd ..
+
+# 3. Start backend (Terminal 1)
+python api/main.py
+
+# 4. Start frontend (Terminal 2)
+cd frontend && npm run dev
+
+# 5. Open http://localhost:5173 in your browser
+```
+
+**No API keys required!** The app works fully offline with heuristic-based AI. Optionally set `OPENAI_API_KEY` for enhanced generation.
+
+---
+
 ## Table of Contents
+- [Quick Start](#quick-start-tldr)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Installation](#installation)
@@ -20,6 +45,7 @@ An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, wi
 - [Ethics & Bias Analysis](#ethics--bias-analysis)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
+- [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
 ---
@@ -51,7 +77,7 @@ An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, wi
 ### AI Agent Features
 | Feature | Description |
 |---------|-------------|
-| **Profile Management** | Create profile or parse from resume text |
+| **Profile Management** | Create profile manually, upload PDF resume, or paste resume text |
 | **Job Matching** | Score jobs 0-100% based on profile fit |
 | **Skill Gap Analysis** | Identify missing skills to learn |
 | **Hiring Simulation** | Mock recruiter evaluation of applications |
@@ -106,63 +132,128 @@ An autonomous AI agent for searching AI Engineer jobs at mid-sized companies, wi
 ## Installation
 
 ### Prerequisites
-- Python 3.10 or higher
-- Node.js 18+ (for web UI)
+- **Python 3.10+** - [Download Python](https://www.python.org/downloads/)
+- **Node.js 18+** - [Download Node.js](https://nodejs.org/)
+- **pip** - Comes with Python
+- **npm** - Comes with Node.js
 
-### Quick Start
+### Step-by-Step Installation
 
+#### Step 1: Clone the Repository
 ```bash
-# Clone the repository
 git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
 cd Linkedin-job-scraper
+```
 
-# Install Python dependencies
+#### Step 2: Install Python Dependencies
+```bash
 pip install -r requirements.txt
+```
 
-# Install CLI tool
-pip install -e .
+This installs:
+- `fastapi` - Backend API framework
+- `uvicorn` - ASGI server
+- `beautifulsoup4` - Web scraping
+- `PyPDF2` - PDF resume parsing
+- `openai` - Optional AI enhancement
 
-# Install frontend dependencies
+#### Step 3: Install Frontend Dependencies
+```bash
 cd frontend
 npm install
 cd ..
 ```
 
-### Optional: OpenAI API Key
-For enhanced resume and cover letter generation:
+#### Step 4 (Optional): Install CLI Tool
 ```bash
+pip install -e .
+```
+
+### API Keys (Optional)
+
+**The app works WITHOUT any API keys!** All features use local heuristic algorithms by default.
+
+For enhanced AI-powered resume/cover letter generation with OpenAI:
+```bash
+# macOS/Linux
 export OPENAI_API_KEY="your-api-key"
+
+# Windows (Command Prompt)
+set OPENAI_API_KEY=your-api-key
+
+# Windows (PowerShell)
+$env:OPENAI_API_KEY="your-api-key"
 ```
 
 ---
 
 ## Usage
 
-### Web Interface
+### Web Interface (Recommended)
 
-The easiest way to use the agent. Start both servers:
+The easiest way to use the agent. **You need TWO terminal windows running simultaneously.**
 
-**Terminal 1 - API Server:**
+#### Terminal 1 - Start the Backend API Server
 ```bash
+# From the project root directory
 python api/main.py
 ```
+You should see:
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000
+INFO:     Application startup complete.
+```
 
-**Terminal 2 - Frontend:**
+#### Terminal 2 - Start the Frontend Dev Server
 ```bash
+# From the project root directory
 cd frontend
 npm run dev
 ```
+You should see:
+```
+VITE v5.x.x  ready in xxx ms
+➜  Local:   http://localhost:5173/
+```
 
+#### Open the App
 Open **http://localhost:5173** in your browser.
 
-#### Using the AI Agent Tab
+> **Important**: Keep BOTH terminals running while using the app. The frontend (Terminal 2) talks to the backend API (Terminal 1).
 
-1. **Create Profile**: Fill in your details or paste your resume
-2. **Search**: Enter job keywords and location
-3. **Review Ranked Jobs**: See match scores and skill gaps
-4. **Generate Materials**: Create tailored resumes and cover letters
-5. **Evaluate**: Run hiring simulation to test your applications
-6. **Analyze Bias**: Check for biases in search results
+---
+
+### Using the AI Agent Tab (Step-by-Step)
+
+#### 1. Create Your Profile
+You have 3 options:
+- **Fill Form**: Manually enter your details
+- **Upload PDF**: Upload your resume as a PDF file (drag & drop supported)
+- **Paste Text**: Copy/paste your resume text
+
+#### 2. Search for Jobs
+- Enter job keywords (default: "AI Engineer")
+- Enter location (optional, e.g., "San Francisco" or "Remote")
+- Select company size filter (Startups / Mid-sized / Enterprise)
+- Click "Search & Rank Jobs"
+
+#### 3. Review Ranked Results
+- Jobs are scored 0-100% based on how well they match your profile
+- See which skills you have and which you're missing
+- Click on any job to see more details
+
+#### 4. Generate Application Materials
+For any job, click:
+- **"Generate Resume"** - Creates a tailored resume optimized for that job
+- **"Generate Cover Letter"** - Creates a personalized cover letter
+
+#### 5. Run Hiring Simulation
+- Click "Run Evaluation" to simulate how recruiters would review your applications
+- See interview rates, ATS scores, and feedback
+
+#### 6. Analyze Bias
+- Click "Analyze Bias" to detect potential biases in search results
+- See distribution by location, company size, salary, and experience level
 
 ---
 
@@ -203,6 +294,7 @@ python api/main.py
 | GET | `/api/search` | Search jobs with filters |
 | POST | `/api/profile` | Create user profile |
 | POST | `/api/profile/parse` | Parse resume text |
+| POST | `/api/profile/upload-pdf` | Upload and parse PDF resume |
 | POST | `/api/search/ranked` | Search and rank by profile |
 | POST | `/api/tailor/resume` | Generate tailored resume |
 | POST | `/api/generate/cover-letter` | Generate cover letter |
@@ -379,7 +471,79 @@ linkedin-job-scraper/
 | CLI | Click, Rich |
 | Backend | FastAPI, Uvicorn, Pydantic |
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
+| PDF Parsing | PyPDF2 |
 | Storage | localStorage (browser) |
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Could not connect to the server"
+**Problem**: Frontend can't reach the backend API.
+
+**Solution**:
+1. Make sure Terminal 1 is running `python api/main.py`
+2. Check that port 8000 is not in use by another app
+3. Try restarting the API server
+
+```bash
+# Check if port 8000 is in use
+lsof -i :8000  # macOS/Linux
+netstat -ano | findstr :8000  # Windows
+
+# Kill the process using that port (if needed)
+kill -9 <PID>  # macOS/Linux
+```
+
+#### "Module not found" errors
+**Problem**: Python dependencies not installed.
+
+**Solution**:
+```bash
+pip install -r requirements.txt
+```
+
+#### "npm: command not found"
+**Problem**: Node.js is not installed.
+
+**Solution**: Download and install Node.js from https://nodejs.org/
+
+#### Frontend shows blank page
+**Problem**: Frontend dependencies not installed or build failed.
+
+**Solution**:
+```bash
+cd frontend
+rm -rf node_modules
+npm install
+npm run dev
+```
+
+#### PDF upload not working
+**Problem**: PyPDF2 not installed.
+
+**Solution**:
+```bash
+pip install PyPDF2
+```
+
+#### Jobs not loading / "Search failed"
+**Problem**: LinkedIn may be rate-limiting or blocking requests.
+
+**Solution**:
+- Wait a few minutes and try again
+- Reduce the number of results (limit)
+- Try different search keywords
+
+### Getting Help
+
+If you're still having issues:
+1. Check that all prerequisites are installed (`python --version`, `node --version`)
+2. Make sure both terminals are running
+3. Try a fresh install (delete `node_modules` and reinstall)
+4. Open an issue on GitHub with error details
 
 ---
 
@@ -389,7 +553,7 @@ Contributions are welcome! Areas of interest:
 
 - [ ] Additional job sources (Indeed, Glassdoor)
 - [ ] Improved skill matching (embeddings)
-- [ ] PDF resume parsing
+- [x] PDF resume parsing
 - [ ] Interview preparation module
 - [ ] Salary negotiation assistant
 

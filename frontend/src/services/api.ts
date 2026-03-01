@@ -67,6 +67,23 @@ export async function parseResume(resumeText: string): Promise<{ profile_id: str
   return response.json();
 }
 
+export async function uploadPdfResume(file: File): Promise<{ profile_id: string; profile: UserProfile }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch(`${API_BASE}/api/profile/upload-pdf`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `Failed to upload PDF: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
 export async function getProfile(profileId: string): Promise<UserProfile> {
   const response = await fetch(`${API_BASE}/api/profile/${profileId}`);
   

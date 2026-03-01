@@ -13,7 +13,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from linkedin_scraper.scraper import LinkedInScraper, Job
-from linkedin_scraper.agent.profile import UserProfile, parse_resume_text
+from linkedin_scraper.agent.profile import UserProfile, parse_resume_text, parse_pdf_resume
 from linkedin_scraper.agent.ranker import JobRanker, RankedJob
 from linkedin_scraper.agent.resume_tailor import ResumeTailor
 from linkedin_scraper.agent.cover_letter import CoverLetterGenerator
@@ -313,6 +313,24 @@ async def parse_resume(resume_text: str = Form(...)):
     profile_store[profile_id] = profile
     
     return {"status": "success", "profile_id": profile_id, "profile": profile.to_dict()}
+
+
+@app.post("/api/profile/upload-pdf")
+async def upload_pdf_resume(file: UploadFile = File(...)):
+    """Upload and parse a PDF resume."""
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="File must be a PDF")
+    
+    try:
+        contents = await file.read()
+        profile = parse_pdf_resume(contents)
+        
+        profile_id = profile.email or profile.name or "uploaded"
+        profile_store[profile_id] = profile
+        
+        return {"status": "success", "profile_id": profile_id, "profile": profile.to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse PDF: {str(e)}")
 
 
 @app.get("/api/profile/{profile_id}")

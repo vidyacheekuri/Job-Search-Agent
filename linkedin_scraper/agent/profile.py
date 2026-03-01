@@ -2,8 +2,9 @@
 
 import json
 import re
+import io
 from dataclasses import dataclass, field, asdict
-from typing import Optional
+from typing import Optional, Union, BinaryIO
 from pathlib import Path
 
 
@@ -228,3 +229,36 @@ def parse_resume_text(text: str) -> UserProfile:
             break
     
     return profile
+
+
+def parse_pdf_resume(file: Union[str, BinaryIO, bytes]) -> UserProfile:
+    """
+    Parse a PDF resume file into a UserProfile.
+    
+    Args:
+        file: Path to PDF file, file-like object, or bytes.
+        
+    Returns:
+        UserProfile extracted from the PDF.
+    """
+    try:
+        from PyPDF2 import PdfReader
+    except ImportError:
+        raise ImportError("PyPDF2 is required for PDF parsing. Install with: pip install PyPDF2")
+    
+    if isinstance(file, str):
+        reader = PdfReader(file)
+    elif isinstance(file, bytes):
+        reader = PdfReader(io.BytesIO(file))
+    else:
+        reader = PdfReader(file)
+    
+    text_parts = []
+    for page in reader.pages:
+        page_text = page.extract_text()
+        if page_text:
+            text_parts.append(page_text)
+    
+    full_text = "\n".join(text_parts)
+    
+    return parse_resume_text(full_text)

@@ -4,6 +4,7 @@ import type { UserProfile, WorkExperience } from '../types/job';
 interface ProfileFormProps {
   onSubmit: (profile: UserProfile) => void;
   onParseResume: (text: string) => void;
+  onUploadPdf: (file: File) => void;
   initialProfile?: Partial<UserProfile>;
   isLoading?: boolean;
 }
@@ -36,14 +37,17 @@ const defaultProfile: UserProfile = {
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({ 
   onSubmit, 
-  onParseResume, 
+  onParseResume,
+  onUploadPdf,
   initialProfile, 
   isLoading 
 }) => {
   const [profile, setProfile] = useState<UserProfile>({ ...defaultProfile, ...initialProfile });
   const [resumeText, setResumeText] = useState('');
-  const [activeTab, setActiveTab] = useState<'form' | 'paste'>('form');
+  const [activeTab, setActiveTab] = useState<'form' | 'paste' | 'upload'>('form');
   const [skillInput, setSkillInput] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const updateField = <K extends keyof UserProfile>(field: K, value: UserProfile[K]) => {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -93,6 +97,40 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadPdf = () => {
+    if (selectedFile) {
+      onUploadPdf(selectedFile);
+    }
+  };
+
   const inputClass = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white";
   const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
 
@@ -112,6 +150,17 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab('upload')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'upload'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+          }`}
+        >
+          Upload PDF
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('paste')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'paste'
@@ -119,11 +168,89 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
-          Paste Resume
+          Paste Text
         </button>
       </div>
 
-      {activeTab === 'paste' ? (
+      {activeTab === 'upload' ? (
+        <div>
+          <label className={labelClass}>Upload your resume (PDF)</label>
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              dragActive
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+            }`}
+          >
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileSelect}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="space-y-2">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                stroke="currentColor"
+                fill="none"
+                viewBox="0 0 48 48"
+              >
+                <path
+                  d="M28 8H12a4 4 0 00-4 4v20m0 0v4a4 4 0 004 4h20a4 4 0 004-4V28m-8-20l8 8m0 0v8m0-8h-8"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="text-gray-600 dark:text-gray-400">
+                <span className="font-medium text-blue-600 dark:text-blue-400">
+                  Click to upload
+                </span>{' '}
+                or drag and drop
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-500">PDF files only</p>
+            </div>
+          </div>
+          
+          {selectedFile && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                  {selectedFile.name}
+                </span>
+                <span className="text-xs text-green-600 dark:text-green-400">
+                  ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="text-green-600 hover:text-red-500 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          )}
+          
+          <button
+            type="button"
+            onClick={handleUploadPdf}
+            disabled={!selectedFile || isLoading}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? 'Uploading...' : 'Upload & Parse PDF'}
+          </button>
+        </div>
+      ) : activeTab === 'paste' ? (
         <div>
           <label className={labelClass}>Paste your resume text</label>
           <textarea

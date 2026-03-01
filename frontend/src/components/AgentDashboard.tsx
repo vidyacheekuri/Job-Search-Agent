@@ -4,7 +4,7 @@ import { ProfileForm } from './ProfileForm';
 import { RankedJobCard } from './RankedJobCard';
 import { SkeletonList } from './SkeletonCard';
 import { ErrorMessage } from './ErrorMessage';
-import { createProfile, parseResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, analyzeBias } from '../services/api';
+import { createProfile, parseResume, uploadPdfResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, analyzeBias } from '../services/api';
 
 type AgentTab = 'profile' | 'search' | 'results' | 'evaluation' | 'bias';
 
@@ -50,6 +50,21 @@ export const AgentDashboard: React.FC = () => {
       setActiveTab('search');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse resume');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUploadPdf = async (file: File) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await uploadPdfResume(file);
+      setProfile(result.profile as unknown as UserProfile);
+      setProfileId(result.profile_id);
+      setActiveTab('search');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload PDF resume');
     } finally {
       setIsLoading(false);
     }
@@ -169,6 +184,7 @@ export const AgentDashboard: React.FC = () => {
           <ProfileForm
             onSubmit={handleProfileSubmit}
             onParseResume={handleParseResume}
+            onUploadPdf={handleUploadPdf}
             initialProfile={profile || undefined}
             isLoading={isLoading}
           />
