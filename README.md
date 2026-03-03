@@ -11,7 +11,7 @@ An autonomous AI agent for searching **AI Engineer jobs at mid-sized "Middle Ame
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/YOUR_USERNAME/Job-Search-Agent.git
+git clone https://github.com/vidyacheekuri/Job-Search-Agent.git
 cd Job-Search-Agent
 pip install -r requirements.txt
 
@@ -72,12 +72,15 @@ This project implements an AI agent for the **"Middle America Job and Applicatio
 | Deliverable | Status | Location |
 |-------------|--------|----------|
 | Design Document | ✅ | `docs/DESIGN_DOCUMENT.md` |
+| Requirements | ✅ | `docs/REQUIREMENTS.md` |
 | Implementation | ✅ | `linkedin_scraper/agent/` |
 | 20-Job Benchmark | ✅ | `data/benchmark_jobs.json` |
 | Sample Resume | ✅ | `data/sample_resume.json` |
 | Evaluation Metrics | ✅ | Precision@10, Interview Yield |
+| Report Template | ✅ | `docs/REPORT_TEMPLATE.md` |
 | Ethics/Bias Analysis | ✅ | `docs/ETHICS.md` |
 | Reflections Template | ✅ | `docs/REFLECTIONS_TEMPLATE.md` |
+| Filter Toggle Experiment | ✅ | `scripts/filter_toggle_experiment.py` |
 
 ---
 
@@ -90,7 +93,7 @@ This project implements an AI agent for the **"Middle America Job and Applicatio
 | **FAANG+ Blacklist** | Automatically exclude 40+ big tech companies (Google, Meta, Amazon, etc.) |
 | **Startup Filter** | Exclude startups (<50 employees) using heuristic detection |
 | **Location Filter** | Toggle-able state filter (Iowa-only, Texas-only, etc.) |
-| **AI-Powered Ranking** | Rank jobs by profile match (skills, title, location, experience) |
+| **AI-Powered Ranking** | Rank jobs by profile match (skills, title, location, recency, experience) |
 | **Resume Tailoring** | Generate customized resumes for each job |
 | **Cover Letter Generation** | AI-generated personalized cover letters |
 | **ATS Optimization** | Score resumes for Applicant Tracking Systems |
@@ -189,13 +192,19 @@ Google, Meta, Amazon, Apple, Netflix, Microsoft, OpenAI, Anthropic, Nvidia, Uber
 
 #### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/Job-Search-Agent.git
+git clone https://github.com/vidyacheekuri/Job-Search-Agent.git
 cd Job-Search-Agent
 ```
 
 #### Step 2: Install Python Dependencies
 ```bash
 pip install -r requirements.txt
+```
+
+Or with Conda (assignment: requirements.txt / environment.yml):
+```bash
+conda env create -f environment.yml
+conda activate job-search-agent
 ```
 
 This installs:
@@ -462,15 +471,23 @@ print(f"Interview Yield: {eval_results['interview_yield']}")
 ```
 
 ### Human Rating Form
-Generate a form for 3 human raters:
+Generate a form for 3 human raters (assignment: "Have 3 humans score: Interview? (Yes/No)"):
 ```python
 from linkedin_scraper.agent import create_human_rating_form
 
 create_human_rating_form(
     shortlist=top_10_jobs,
-    output_path="human_rating_form.json"
+    output_path="human_rating_form.json",
+    num_raters=3,
 )
 ```
+
+### Filter Toggle Experiment
+Run Iowa vs Texas location filter (assignment: "Filter toggle test"):
+```bash
+python scripts/filter_toggle_experiment.py
+```
+Results saved to `output/filter_toggle_experiment/`.
 
 ### Metrics Tracked
 - **Precision@10**: Core metric for ranking quality
