@@ -61,11 +61,12 @@ This document describes the design and architecture of an AI agent that autonomo
 │  STAGE 5: RANK - Top 10 Selection                                        │
 │  ────────────────────────────────                                        │
 │  • Skill Match (35%): Python, TensorFlow, MLflow alignment              │
-│  • Title Match (25%): AI Engineer, ML Engineer similarity               │
+│  • Title Match (20%): AI Engineer, ML Engineer similarity               │
 │  • Location Match (15%): Preferred region proximity                      │
+│  • Recency (10%): Job posting date - fresher = higher score             │
 │  • Experience Match (10%): 3-5 years requirement                         │
 │  • Company Match (5%): Target company preferences                        │
-│  • Salary Match (10%): Meets minimum salary threshold                    │
+│  • Salary Match (5%): Meets minimum salary threshold                     │
 │  • Logging: Score breakdown, rank position, match reasons                │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -316,7 +317,7 @@ Human scoring (1-5 scale):
 ## 8. File Structure
 
 ```
-linkedin-job-scraper/
+Job-Search-Agent/
 ├── linkedin_scraper/
 │   ├── agent/
 │   │   ├── __init__.py

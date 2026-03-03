@@ -396,44 +396,69 @@ class TailoringEvaluator:
         return list(dict.fromkeys(keywords))[:20]
 
 
-def create_human_rating_form(shortlist: list[dict], output_path: str) -> None:
+def create_human_rating_form(
+    shortlist: list[dict],
+    output_path: str,
+    num_raters: int = 3,
+) -> None:
     """
     Create a human rating form for the benchmark evaluation.
+    Assignment: "Have 3 humans score the agent shortlist: Interview? (Yes/No)"
     
     Args:
         shortlist: List of jobs to rate
         output_path: Path to save the form
+        num_raters: Number of human raters (default: 3 per assignment)
     """
     form = {
         "instructions": """
 Human Rating Form for Job Search Agent Evaluation
+(Assignment: 3 human raters per shortlist)
 
-Instructions for Raters:
+Instructions for Each Rater:
 1. Review each job in the shortlist below
 2. For each job, decide: "Would you interview this candidate for this role?"
-3. Mark 'yes' or 'no' for each job
+3. Mark 'yes' or 'no' for each job (required)
 4. Optionally add comments explaining your decision
 
 Rating Scale:
 - yes: This is a good match, candidate should be interviewed
 - no: This is not a good match, candidate should not be interviewed
+
+After all 3 raters complete their forms, aggregate for Interview Yield:
+Interview Yield = (Total 'yes' ratings) / (Total ratings)
 """,
-        "rater_name": "[YOUR NAME]",
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "num_raters_required": num_raters,
+        "date_created": datetime.now().strftime("%Y-%m-%d"),
         "jobs_to_rate": [],
+        "rater_responses": {
+            f"rater_{i+1}": {
+                "rater_name": "[RATER NAME]",
+                "date_completed": "",
+                "ratings": [],
+            }
+            for i in range(num_raters)
+        },
     }
     
     for i, job in enumerate(shortlist, 1):
-        form["jobs_to_rate"].append({
+        job_entry = {
             "rank": i,
             "position": job.get("position", job.get("title", "")),
             "company": job.get("company", ""),
             "location": job.get("location", ""),
             "salary": job.get("salary", "Not specified"),
             "match_score": job.get("score", "N/A"),
-            "interview_decision": "",
-            "comments": "",
-        })
+            "job_id": job.get("id", ""),
+        }
+        form["jobs_to_rate"].append(job_entry)
+        for rater_key in form["rater_responses"]:
+            form["rater_responses"][rater_key]["ratings"].append({
+                "rank": i,
+                "job_id": job.get("id", ""),
+                "interview_decision": "",
+                "comments": "",
+            })
     
     with open(output_path, 'w') as f:
         json.dump(form, f, indent=2)
