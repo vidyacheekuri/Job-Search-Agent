@@ -19,6 +19,7 @@ class RankedJob:
     experience_match: float
     company_match: float
     salary_match: float
+    recency_match: float
     matched_skills: list[str]
     missing_skills: list[str]
     match_reasons: list[str]
@@ -34,6 +35,7 @@ class RankedJob:
             "experience_match": self.experience_match,
             "company_match": self.company_match,
             "salary_match": self.salary_match,
+            "recency_match": self.recency_match,
             "matched_skills": self.matched_skills,
             "missing_skills": self.missing_skills,
             "match_reasons": self.match_reasons,
@@ -46,13 +48,15 @@ class JobRanker:
     Uses a weighted scoring system across multiple dimensions.
     """
     
+    # Assignment: "Rank top 10 by skill match, location preference, and recency"
     WEIGHTS = {
         "skills": 0.35,
-        "title": 0.25,
+        "title": 0.20,
         "location": 0.15,
+        "recency": 0.10,
         "experience": 0.10,
         "company": 0.05,
-        "salary": 0.10,
+        "salary": 0.05,
     }
     
     EXPERIENCE_LEVEL_YEARS = {
@@ -248,6 +252,36 @@ class JobRanker:
         
         return 0.5
     
+    def _calculate_recency_match(self, job: Job) -> float:
+        """
+        Calculate recency score based on job posting date.
+        Assignment: Rank by recency - fresher posts score higher.
+        """
+        ago_time = (job.ago_time or "").lower()
+        if not ago_time:
+            return 0.5  # Unknown = neutral
+        
+        # Parse "1 day ago", "2 days ago", "1 week ago", "past month", etc.
+        if "today" in ago_time or "just now" in ago_time or "hour" in ago_time:
+            return 1.0
+        if "1 day" in ago_time or "yesterday" in ago_time:
+            return 0.95
+        if "2 day" in ago_time or "3 day" in ago_time:
+            return 0.85
+        if "4 day" in ago_time or "5 day" in ago_time or "6 day" in ago_time:
+            return 0.75
+        if "1 week" in ago_time or "week ago" in ago_time:
+            return 0.65
+        if "2 week" in ago_time:
+            return 0.55
+        if "3 week" in ago_time:
+            return 0.45
+        if "month" in ago_time:
+            return 0.35
+        if "2 month" in ago_time or "3 month" in ago_time:
+            return 0.25
+        return 0.15  # Older than 3 months
+    
     def _calculate_salary_match(self, job: Job) -> float:
         """Calculate salary match score between 0 and 1."""
         if not job.salary or not self.profile.min_salary:
@@ -277,32 +311,37 @@ class JobRanker:
             return 0.3
     
     def _generate_match_reasons(self, ranked_job: RankedJob) -> list[str]:
-        """Generate human-readable match reasons."""
+        """Generate human-readable match reasons. Scores are 0-100."""
         reasons = []
         
-        if ranked_job.skill_match >= 0.8:
+        if ranked_job.skill_match >= 80:
             reasons.append(f"Strong skill match ({len(ranked_job.matched_skills)} skills)")
-        elif ranked_job.skill_match >= 0.5:
+        elif ranked_job.skill_match >= 50:
             reasons.append(f"Good skill match ({len(ranked_job.matched_skills)} skills)")
         
-        if ranked_job.title_match >= 0.8:
+        if ranked_job.title_match >= 80:
             reasons.append("Excellent title match")
-        elif ranked_job.title_match >= 0.6:
+        elif ranked_job.title_match >= 60:
             reasons.append("Good title match")
         
-        if ranked_job.location_match >= 0.9:
+        if ranked_job.location_match >= 90:
             reasons.append("Perfect location match")
         elif "remote" in ranked_job.job.location.lower():
             reasons.append("Remote opportunity")
         
-        if ranked_job.salary_match >= 0.9 and ranked_job.job.salary:
+        if ranked_job.salary_match >= 90 and ranked_job.job.salary:
             reasons.append(f"Meets salary expectations ({ranked_job.job.salary})")
         
-        if ranked_job.company_match >= 0.9:
+        if ranked_job.company_match >= 90:
             reasons.append("Target company")
         
         if ranked_job.missing_skills:
             reasons.append(f"Consider learning: {', '.join(ranked_job.missing_skills[:3])}")
+        
+        if ranked_job.recency_match >= 90:
+            reasons.append("Posted recently (<3 days)")
+        elif ranked_job.recency_match >= 65:
+            reasons.append("Posted within past week")
         
         return reasons
     
@@ -322,11 +361,13 @@ class JobRanker:
         experience_match = self._calculate_experience_match(job)
         company_match = self._calculate_company_match(job)
         salary_match = self._calculate_salary_match(job)
+        recency_match = self._calculate_recency_match(job)
         
         score = (
             skill_match * self.WEIGHTS["skills"] +
             title_match * self.WEIGHTS["title"] +
             location_match * self.WEIGHTS["location"] +
+            recency_match * self.WEIGHTS["recency"] +
             experience_match * self.WEIGHTS["experience"] +
             company_match * self.WEIGHTS["company"] +
             salary_match * self.WEIGHTS["salary"]
@@ -341,6 +382,7 @@ class JobRanker:
             experience_match=round(experience_match * 100, 1),
             company_match=round(company_match * 100, 1),
             salary_match=round(salary_match * 100, 1),
+            recency_match=round(recency_match * 100, 1),
             matched_skills=matched_skills,
             missing_skills=missing_skills,
             match_reasons=[],
