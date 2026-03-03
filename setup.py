@@ -1,4 +1,4 @@
-"""Setup script for linkedin-job-scraper."""
+"""Setup script for Job Search Agent."""
 
 from setuptools import setup, find_packages
 
@@ -9,13 +9,13 @@ with open("requirements.txt", "r", encoding="utf-8") as f:
     requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 setup(
-    name="linkedin-job-scraper",
+    name="job-search-agent",
     version="0.1.0",
-    author="Your Name",
-    description="A CLI tool for scraping LinkedIn job listings",
+    author="AI for Engineers - Group Assignment",
+    description="An autonomous AI agent for searching AI Engineer jobs at mid-sized Middle America companies",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/linkedin-job-scraper",
+    url="https://github.com/YOUR_USERNAME/Job-Search-Agent",
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=requirements,

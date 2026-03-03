@@ -11,8 +11,8 @@ An autonomous AI agent for searching **AI Engineer jobs at mid-sized "Middle Ame
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
-cd Linkedin-job-scraper
+git clone https://github.com/YOUR_USERNAME/Job-Search-Agent.git
+cd Job-Search-Agent
 pip install -r requirements.txt
 
 # 2. Install frontend
@@ -189,8 +189,8 @@ Google, Meta, Amazon, Apple, Netflix, Microsoft, OpenAI, Anthropic, Nvidia, Uber
 
 #### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/AdithyaReddyGeeda/Linkedin-job-scraper.git
-cd Linkedin-job-scraper
+git clone https://github.com/YOUR_USERNAME/Job-Search-Agent.git
+cd Job-Search-Agent
 ```
 
 #### Step 2: Install Python Dependencies
@@ -803,10 +803,8 @@ This tool scrapes publicly available job listings from LinkedIn. Please use resp
 
 ---
 
-## Author
+## Contributors
 
-**Adithya Reddy Geeda**
-
-- GitHub: [@AdithyaReddyGeeda](https://github.com/AdithyaReddyGeeda)
+AI for Engineers - Group Assignment (4 members)
 
 ---
