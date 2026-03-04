@@ -25,9 +25,9 @@ const defaultFilters: SearchFilters = {
 };
 
 const SOURCE_INFO: Record<JobSource, { name: string; color: string; icon: string }> = {
-  linkedin: { name: 'LinkedIn', color: 'bg-blue-500', icon: '💼' },
-  indeed: { name: 'Indeed', color: 'bg-purple-500', icon: '🔍' },
-  greenhouse: { name: 'Greenhouse', color: 'bg-green-500', icon: '🌱' },
+  linkedin: { name: 'LinkedIn', color: 'bg-teal-500', icon: '💼' },
+  indeed: { name: 'Indeed', color: 'bg-cyan-500', icon: '🔍' },
+  greenhouse: { name: 'Greenhouse', color: 'bg-emerald-500', icon: '🌱' },
 };
 
 export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, initialFilters }) => {
@@ -72,12 +72,12 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
     filters.under10Applicants,
   ].filter(Boolean).length;
 
-  const selectClass = "w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:bg-white dark:focus:bg-gray-600 focus:border-blue-500 dark:focus:border-blue-400 text-gray-900 dark:text-white transition-colors";
-  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:bg-white dark:focus:bg-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all";
+  const selectClass = "w-full px-3 py-2 text-sm bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl focus:bg-white dark:focus:bg-gray-600 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 text-stone-900 dark:text-white transition-colors";
+  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl focus:bg-white dark:focus:bg-gray-600 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-gray-500 transition-all";
 
   return (
     <form onSubmit={handleSubmit} className="mb-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-gray-800/80 rounded-2xl shadow-sm border border-stone-200 dark:border-gray-700 p-5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
@@ -110,7 +110,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
           <button
             type="submit"
             disabled={isLoading || !filters.keyword.trim()}
-            className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 disabled:bg-stone-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20"
           >
             {isLoading ? (
               <>
@@ -165,7 +165,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
             </svg>
             Filters
             {activeFilterCount > 0 && (
-              <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium px-1.5 py-0.5 rounded">
+              <span className="bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-medium px-1.5 py-0.5 rounded-lg">
                 {activeFilterCount}
               </span>
             )}
@@ -177,7 +177,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
                 type="checkbox"
                 checked={filters.easyApply}
                 onChange={(e) => updateFilter('easyApply', e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+                className="w-4 h-4 text-teal-600 rounded border-stone-300 dark:border-gray-600 focus:ring-teal-500 bg-white dark:bg-gray-700"
               />
               <span className="text-sm text-gray-600 dark:text-gray-400">Easy Apply</span>
             </label>
@@ -186,7 +186,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading, ini
                 type="checkbox"
                 checked={filters.details}
                 onChange={(e) => updateFilter('details', e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+                className="w-4 h-4 text-teal-600 rounded border-stone-300 dark:border-gray-600 focus:ring-teal-500 bg-white dark:bg-gray-700"
               />
               <span className="text-sm text-gray-600 dark:text-gray-400">Full Details</span>
             </label>

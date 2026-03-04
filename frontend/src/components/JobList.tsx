@@ -56,7 +56,7 @@ export const JobList: React.FC<JobListProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           <span className="font-semibold text-gray-900 dark:text-white">{jobs.length}</span> jobs found
-          {keyword && <span> for <span className="font-medium text-blue-600 dark:text-blue-400">"{keyword}"</span></span>}
+          {keyword && <span> for <span className="font-medium text-teal-600 dark:text-teal-400">"{keyword}"</span></span>}
           {location && <span> in <span className="font-medium">{location}</span></span>}
         </p>
         {totalPages > 1 && (

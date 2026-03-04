@@ -579,9 +579,10 @@ class AgentEvaluator:
         """Simulate a recruiter reviewing an application."""
         match_score = app.ranked_job.score
         ats_score = app.tailored_resume.ats_score
-        personalization = app.cover_letter.personalization_score
+        personalization = app.cover_letter.personalization_score  # 0-100 scale
+        personalization_norm = min(personalization / 100.0, 1.0)
         
-        combined_score = (match_score * 0.4 + ats_score * 0.3 + personalization * 30) / 100
+        combined_score = (match_score * 0.4 + ats_score * 0.3 + personalization_norm * 30) / 100
         
         threshold_interview = 0.7 - (self.strictness * 0.2)
         threshold_maybe = 0.5 - (self.strictness * 0.1)
@@ -601,23 +602,23 @@ class AgentEvaluator:
             strengths.append("Strong skill alignment")
         if ats_score >= 75:
             strengths.append("Well-formatted resume")
-        if personalization >= 3:
+        if personalization >= 60:
             strengths.append("Personalized cover letter")
         if app.ranked_job.matched_skills:
-            strengths.append(f"Key skills: {', '.join(app.ranked_job.matched_skills[:3])}")
+            strengths.append(f"Matched skills: {', '.join(app.ranked_job.matched_skills[:3])}")
         
         weaknesses = []
         if match_score < 60:
             weaknesses.append("Limited skill match")
         if app.ranked_job.missing_skills:
             weaknesses.append(f"Missing: {', '.join(app.ranked_job.missing_skills[:2])}")
-        if personalization < 2:
+        if personalization < 40:
             weaknesses.append("Generic cover letter")
         
         return RecruiterFeedback(
             application_id=f"app_{index}",
             resume_score=ats_score,
-            cover_letter_score=personalization * 20,
+            cover_letter_score=round(personalization, 1),
             interview_decision=decision,
             overall_impression=impression,
             strengths=strengths or ["Meets basic requirements"],

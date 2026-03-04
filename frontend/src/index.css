@@ -7,11 +7,17 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 0;
+}
+
+/* Custom design tokens */
+:root {
+  --accent: 14 165 233; /* sky-500 */
+  --accent-secondary: 20 184 166; /* teal-500 */
 }
 
 .line-clamp-2 {

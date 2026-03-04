@@ -12,9 +12,9 @@ interface JobCardProps {
 }
 
 const SOURCE_BADGES: Record<string, { label: string; color: string; icon: string }> = {
-  linkedin: { label: 'LinkedIn', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: '💼' },
-  indeed: { label: 'Indeed', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: '🔍' },
-  greenhouse: { label: 'Greenhouse', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: '🌱' },
+  linkedin: { label: 'LinkedIn', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400', icon: '💼' },
+  indeed: { label: 'Indeed', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400', icon: '🔍' },
+  greenhouse: { label: 'Greenhouse', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: '🌱' },
 };
 
 const estimateSalary = (position: string, location: string): string | null => {
@@ -66,7 +66,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   const isEstimatedSalary = !job.salary;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all">
+    <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-stone-200 dark:border-gray-700 p-4 sm:p-5 hover:border-teal-200 dark:hover:border-teal-800 hover:shadow-lg transition-all">
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Company Logo */}
         <div className="flex-shrink-0 hidden sm:block">
@@ -81,7 +81,7 @@ export const JobCard: React.FC<JobCardProps> = ({
               }}
             />
           ) : null}
-          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl ${job.company_logo ? 'hidden' : ''}`}>
+          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-xl ${job.company_logo ? 'hidden' : ''}`}>
             {job.company.charAt(0)}
           </div>
         </div>
@@ -95,7 +95,7 @@ export const JobCard: React.FC<JobCardProps> = ({
               </h3>
               <button
                 onClick={() => onShowCompanyInfo?.(job.company)}
-                className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline text-left"
+                className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:underline text-left"
               >
                 {job.company}
               </button>
@@ -106,7 +106,7 @@ export const JobCard: React.FC<JobCardProps> = ({
               {job.company_logo ? (
                 <img src={job.company_logo} alt="" className="w-10 h-10 rounded-lg object-cover" />
               ) : (
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold">
                   {job.company.charAt(0)}
                 </div>
               )}
@@ -173,7 +173,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           {job.description.length > 150 && (
             <button
               onClick={() => setShowFullDescription(!showFullDescription)}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
+              className="text-xs text-teal-600 dark:text-teal-400 hover:underline mt-1"
             >
               {showFullDescription ? 'Show less' : 'Show more'}
             </button>
@@ -201,7 +201,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           {!isApplied && (
             <button
               onClick={() => onMarkApplied?.(job)}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg transition-colors"
             >
               Mark Applied
             </button>
@@ -218,7 +218,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           href={job.job_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-teal-600 rounded-xl hover:bg-teal-700 transition-colors shadow-md shadow-teal-500/20"
         >
           View Job
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

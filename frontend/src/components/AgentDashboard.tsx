@@ -149,7 +149,7 @@ export const AgentDashboard: React.FC = () => {
   const tabClass = (tab: AgentTab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       activeTab === tab
-        ? 'bg-purple-600 text-white'
+        ? 'bg-teal-600 text-white'
         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
     }`;
 
@@ -199,8 +199,8 @@ export const AgentDashboard: React.FC = () => {
           </h2>
           
           {profile && (
-            <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <p className="text-sm text-purple-700 dark:text-purple-300">
+            <div className="mb-6 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+              <p className="text-sm text-teal-700 dark:text-teal-300">
                 Searching as <strong>{profile.name}</strong> • {profile.skills?.slice(0, 5).join(', ')}
               </p>
             </div>
@@ -251,7 +251,7 @@ export const AgentDashboard: React.FC = () => {
           <button
             onClick={handleSearch}
             disabled={!searchKeyword || isLoading}
-            className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -316,61 +316,82 @@ export const AgentDashboard: React.FC = () => {
       {/* Evaluation Tab */}
       {activeTab === 'evaluation' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             Hiring Simulation Results
           </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            A simulated recruiter reviewed your profile against sample jobs. Use these metrics to improve your applications.
+          </p>
           
           {!evaluation ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-4">
                 Run a hiring simulation to see how your applications would perform
               </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                Uses benchmark data (~5 sec). No LinkedIn scraping needed.
+              </p>
               <button
                 onClick={handleRunEvaluation}
                 disabled={isLoading}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                className="px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors disabled:opacity-70"
               >
-                {isLoading ? 'Running...' : 'Start Simulation'}
+                {isLoading ? 'Running simulation...' : 'Start Simulation'}
               </button>
             </div>
           ) : (
             <div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{evaluation.interview_rate}%</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">Interview Rate</p>
+                <div className="bg-teal-50 dark:bg-teal-900/20 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-teal-700 dark:text-teal-400">
+                    {Math.round((evaluation.interview_rate <= 1 ? evaluation.interview_rate * 100 : evaluation.interview_rate))}%
+                  </p>
+                  <p className="text-sm font-medium text-teal-600 dark:text-teal-400">Interview Rate</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">% of apps that would get an interview</p>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-bold text-green-700 dark:text-green-400">{evaluation.avg_match_score}</p>
-                  <p className="text-sm text-green-600 dark:text-green-400">Avg Match Score</p>
+                  <p className="text-3xl font-bold text-green-700 dark:text-green-400">
+                    {Math.round(evaluation.avg_match_score)}
+                  </p>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Match Score</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">0–100: how well you fit the job</p>
                 </div>
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{evaluation.avg_ats_score}</p>
-                  <p className="text-sm text-purple-600 dark:text-purple-400">Avg ATS Score</p>
+                <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-cyan-700 dark:text-cyan-400">
+                    {Math.round(evaluation.avg_ats_score)}
+                  </p>
+                  <p className="text-sm font-medium text-cyan-600 dark:text-cyan-400">ATS Score</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">0–100: resume readability by systems</p>
                 </div>
                 <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-400">{evaluation.skill_coverage}%</p>
-                  <p className="text-sm text-orange-600 dark:text-orange-400">Skill Coverage</p>
+                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-400">
+                    {Math.round((evaluation.skill_coverage <= 1 ? evaluation.skill_coverage * 100 : evaluation.skill_coverage))}%
+                  </p>
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Skill Coverage</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">% of job skills you have</p>
                 </div>
               </div>
 
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Recruiter Feedback</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Recruiter Feedback</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                Per-application scores. Resume = ATS compatibility (0–100). Cover Letter = personalization (0–100). Advance = would interview.
+              </p>
               <div className="space-y-3">
                 {evaluation.recruiter_feedback.map((fb, i) => (
                   <div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-gray-900 dark:text-white">{fb.application_id}</span>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        fb.decision === 'advance' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${
+                        fb.decision === 'interview' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                         fb.decision === 'maybe' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                         'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
-                        {fb.decision}
+                        {fb.decision === 'interview' ? 'Advance' : fb.decision}
                       </span>
                     </div>
                     <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
-                      <span>Resume: {fb.resume_score}</span>
-                      <span>Cover Letter: {fb.cover_letter_score}</span>
+                      <span>Resume (ATS): {Math.round(fb.resume_score)}/100</span>
+                      <span>Cover Letter: {Math.round(fb.cover_letter_score)}/100</span>
                     </div>
                     {fb.strengths.length > 0 && (
                       <p className="text-sm text-green-600 dark:text-green-400 mt-2">
@@ -400,12 +421,15 @@ export const AgentDashboard: React.FC = () => {
           {!biasAnalysis ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Analyze potential biases in job search results
+                Analyze potential biases in job search results (location, company size, salary, experience)
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                Uses benchmark data (~2 sec). No LinkedIn scraping needed.
               </p>
               <button
                 onClick={handleAnalyzeBias}
                 disabled={isLoading}
-                className="px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                className="px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors disabled:opacity-70"
               >
                 {isLoading ? 'Analyzing...' : 'Run Analysis'}
               </button>
@@ -416,12 +440,18 @@ export const AgentDashboard: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Location Distribution</h3>
                   <div className="space-y-2">
-                    {Object.entries(biasAnalysis.location_bias).slice(0, 5).map(([loc, count]) => (
-                      <div key={loc} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{loc}</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-                      </div>
-                    ))}
+                    {(() => {
+                      const locData = biasAnalysis.location_bias?.all_jobs ?? biasAnalysis.location_bias;
+                      const entries = typeof locData === 'object' && !Array.isArray(locData)
+                        ? Object.entries(locData as Record<string, number>)
+                        : [];
+                      return entries.slice(0, 8).map(([loc, count]) => (
+                        <div key={loc} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{loc}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
                 <div>
@@ -480,7 +510,7 @@ export const AgentDashboard: React.FC = () => {
                   <ul className="space-y-2">
                     {biasAnalysis.recommendations.map((rec, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="text-blue-500 mt-0.5">→</span>
+                        <span className="text-teal-500 mt-0.5">→</span>
                         {rec}
                       </li>
                     ))}
@@ -533,7 +563,7 @@ export const AgentDashboard: React.FC = () => {
               {generatedCoverLetter && (
                 <div>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm font-medium">
+                    <div className="px-3 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 rounded-full text-sm font-medium">
                       Personalization: {generatedCoverLetter.personalization_score}%
                     </div>
                     <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm">

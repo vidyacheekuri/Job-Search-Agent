@@ -126,63 +126,63 @@ function App() {
   };
 
   const tabClass = (tab: Tab) =>
-    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+    `px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
       activeTab === tab
-        ? 'bg-blue-600 text-white'
-        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+        ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+        : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
     }`;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+    <div className="min-h-screen bg-stone-50 dark:bg-gray-950 transition-colors">
+      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-stone-200 dark:border-gray-800 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25">
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 ring-2 ring-white dark:ring-gray-800">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Job Search Agent</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">AI-powered job search & applications</p>
+                <h1 className="text-xl font-bold text-stone-900 dark:text-white tracking-tight">Career Match</h1>
+                <p className="text-xs text-stone-500 dark:text-gray-400 hidden sm:block">Middle America AI jobs · Tailored applications</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+              <nav className="hidden md:flex items-center gap-0 border-b border-stone-200 dark:border-gray-700">
                 <button onClick={() => setActiveTab('search')} className={tabClass('search')}>
                   Search
                 </button>
-                <button onClick={() => setActiveTab('agent')} className={`${tabClass('agent')} flex items-center gap-1`}>
+                <button onClick={() => setActiveTab('agent')} className={`${tabClass('agent')} flex items-center gap-1.5`}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   AI Agent
                 </button>
                 <button onClick={() => setActiveTab('saved')} className={tabClass('saved')}>
                   Saved
                   {savedJobs.length > 0 && (
-                    <span className="ml-1.5 bg-yellow-400 text-yellow-900 text-xs px-1.5 rounded-full">
+                    <span className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0.5 rounded-md font-medium ml-1">
                       {savedJobs.length}
                     </span>
                   )}
                 </button>
-                <button onClick={() => setActiveTab('applications')} className={tabClass('applications')}>
+                <button onClick={() => setActiveTab('applications')} className={`${tabClass('applications')} flex items-center gap-1.5`}>
                   Applications
                   {appliedJobs.length > 0 && (
-                    <span className="ml-1.5 bg-green-400 text-green-900 text-xs px-1.5 rounded-full">
+                    <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs px-1.5 py-0.5 rounded-md font-medium">
                       {appliedJobs.length}
                     </span>
                   )}
                 </button>
-              </div>
+              </nav>
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
             </div>
           </div>
           
           {/* Mobile tabs */}
-          <div className="flex md:hidden items-center gap-1 mt-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
+          <div className="flex md:hidden items-center gap-0 mt-3 border-b border-stone-200 dark:border-gray-700 overflow-x-auto pb-px">
             <button onClick={() => setActiveTab('search')} className={`flex-shrink-0 ${tabClass('search')}`}>
               Search
             </button>
@@ -244,26 +244,26 @@ function App() {
 
             {!hasSearched && !isLoading && (
               <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
-                  <svg className="w-10 h-10 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-3xl flex items-center justify-center">
+                  <svg className="w-12 h-12 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  Find Your Dream Job
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-white mb-2 tracking-tight">
+                  Find Middle America AI Jobs
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-                  Search through thousands of LinkedIn job listings. Save jobs, track applications, and land your next role.
+                <p className="text-stone-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+                  Search LinkedIn, Indeed & Greenhouse. Filter out big tech, rank by fit, get tailored resumes.
                 </p>
-                <p className="text-sm text-purple-600 dark:text-purple-400 mb-4">
-                  Try the <button onClick={() => setActiveTab('agent')} className="font-semibold hover:underline">AI Agent</button> for personalized job matching!
+                <p className="text-sm text-teal-600 dark:text-teal-400 mb-6">
+                  Use the <button onClick={() => setActiveTab('agent')} className="font-semibold hover:underline">AI Agent</button> for profile-based matching & cover letters
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {['Software Engineer', 'Data Scientist', 'AI Engineer', 'Product Manager'].map((term) => (
+                  {['AI Engineer', 'Machine Learning', 'Data Scientist', 'ML Engineer'].map((term) => (
                     <button
                       key={term}
                       onClick={() => setPendingSearch({ keyword: term })}
-                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      className="px-5 py-2.5 bg-white dark:bg-gray-800/80 border border-stone-200 dark:border-gray-700 rounded-xl text-sm font-medium text-stone-700 dark:text-gray-300 hover:border-teal-400 hover:text-teal-600 dark:hover:text-teal-400 hover:shadow-sm transition-all"
                     >
                       {term}
                     </button>

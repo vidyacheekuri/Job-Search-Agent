@@ -131,7 +131,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     }
   };
 
-  const inputClass = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white";
+  const inputClass = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 text-gray-900 dark:text-white";
   const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
 
   return (
@@ -142,7 +142,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           onClick={() => setActiveTab('form')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'form'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-teal-600 text-white'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
@@ -153,7 +153,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           onClick={() => setActiveTab('upload')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'upload'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-teal-600 text-white'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
@@ -164,7 +164,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           onClick={() => setActiveTab('paste')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'paste'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-teal-600 text-white'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
@@ -182,7 +182,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             onDrop={handleDrop}
             className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
               dragActive
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                 : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
             }`}
           >
@@ -207,7 +207,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                 />
               </svg>
               <div className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium text-blue-600 dark:text-blue-400">
+                <span className="font-medium text-teal-600 dark:text-teal-400">
                   Click to upload
                 </span>{' '}
                 or drag and drop
@@ -245,7 +245,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             type="button"
             onClick={handleUploadPdf}
             disabled={!selectedFile || isLoading}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+            className="mt-4 px-6 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Uploading...' : 'Upload & Parse PDF'}
           </button>
@@ -263,7 +263,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             type="button"
             onClick={handlePasteResume}
             disabled={!resumeText.trim() || isLoading}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+            className="mt-4 px-6 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Parsing...' : 'Parse Resume'}
           </button>
@@ -400,7 +400,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               {profile.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm"
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-full text-sm"
                 >
                   {skill}
                   <button
@@ -422,7 +422,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               <button
                 type="button"
                 onClick={addExperience}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-sm text-teal-600 dark:text-teal-400 hover:underline"
               >
                 + Add Experience
               </button>
@@ -533,7 +533,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           <button
             type="submit"
             disabled={!profile.name || !profile.email || isLoading}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Saving...' : 'Save Profile'}
           </button>

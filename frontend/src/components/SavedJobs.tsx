@@ -32,12 +32,12 @@ export const SavedJobs: React.FC<SavedJobsProps> = ({ savedJobs, onRemove, onUpd
               {job.company_logo ? (
                 <img src={job.company_logo} alt={job.company} className="w-12 h-12 rounded-lg object-cover" />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-lg">
                   {job.company.charAt(0)}
                 </div>
               )}
               <div>
-                <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                   {job.position}
                 </a>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{job.company} • {job.location}</p>
@@ -62,7 +62,7 @@ export const SavedJobs: React.FC<SavedJobsProps> = ({ savedJobs, onRemove, onUpd
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Add notes about this job..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none focus:ring-2 focus:ring-teal-500"
                 rows={2}
               />
               <div className="flex gap-2 mt-2">
@@ -71,7 +71,7 @@ export const SavedJobs: React.FC<SavedJobsProps> = ({ savedJobs, onRemove, onUpd
                     onUpdateNotes(job.job_url, noteText);
                     setEditingNotes(null);
                   }}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                  className="px-3 py-1 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 font-medium transition-colors"
                 >
                   Save
                 </button>
@@ -95,7 +95,7 @@ export const SavedJobs: React.FC<SavedJobsProps> = ({ savedJobs, onRemove, onUpd
                   setEditingNotes(job.job_url);
                   setNoteText(job.notes || '');
                 }}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-2"
+                className="text-xs text-teal-600 dark:text-teal-400 hover:underline mt-2"
               >
                 {job.notes ? 'Edit notes' : 'Add notes'}
               </button>

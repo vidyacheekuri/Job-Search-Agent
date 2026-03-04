@@ -31,7 +31,7 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({ history, onSelect,
         {history.slice(0, 8).map((item) => (
           <div
             key={item.id}
-            className="group flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+            className="group flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1.5 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors cursor-pointer"
             onClick={() => onSelect(item)}
           >
             <span className="text-sm text-gray-700 dark:text-gray-300">

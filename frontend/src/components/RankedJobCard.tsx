@@ -30,7 +30,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-lg transition-all">
+    <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-stone-200 dark:border-gray-700 p-5 hover:shadow-lg hover:border-teal-200 dark:hover:border-teal-800 transition-all">
       <div className="flex items-start gap-4">
         {/* Score Badge */}
         <div className={`flex-shrink-0 w-16 h-16 rounded-xl ${getScoreBg(score)} flex flex-col items-center justify-center`}>
@@ -43,7 +43,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
           <h3 className="font-semibold text-gray-900 dark:text-white text-lg leading-tight">
             {job.position}
           </h3>
-          <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+          <p className="text-teal-600 dark:text-teal-400 text-sm font-medium">
             {job.company}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -68,7 +68,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
       {match_reasons.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {match_reasons.map((reason, i) => (
-            <span key={i} className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+            <span key={i} className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs rounded-full">
               {reason}
             </span>
           ))}
@@ -140,7 +140,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
         <button
           onClick={() => onGenerateResume?.(job.job_url)}
           disabled={isGenerating}
-          className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 transition-colors"
+          className="px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-xl hover:bg-cyan-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 transition-colors"
         >
           Generate Resume
         </button>
@@ -155,7 +155,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
           href={job.job_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700 transition-colors"
         >
           View Job
         </a>

@@ -771,23 +771,65 @@ async def load_sample_profile():
     }
 
 
+def _benchmark_job_to_job(bj: dict) -> Job:
+    """Convert benchmark job dict to Job object."""
+    return Job(
+        position=bj.get("position", ""),
+        company=bj.get("company", ""),
+        company_logo=None,
+        location=bj.get("location", ""),
+        date="",
+        ago_time="1 week ago",
+        salary=bj.get("salary", ""),
+        job_url=bj.get("job_url", ""),
+        description=bj.get("description", ""),
+        skills=bj.get("skills"),
+    )
+
+
 @app.post("/api/evaluate", response_model=EvaluationResponse)
 async def evaluate_applications(
     profile_id: str = Query(..., description="Profile ID"),
     keyword: str = Query("AI Engineer"),
     num_applications: int = Query(5, ge=1, le=20),
+    use_benchmark: bool = Query(True, description="Use benchmark (fast, ~5 sec) vs live LinkedIn (slow, 2-5 min)"),
 ):
-    """Run hiring simulation evaluation."""
+    """Run hiring simulation evaluation. Default: benchmark mode (fast). Set use_benchmark=false for live search."""
     if profile_id not in profile_store:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     profile = profile_store[profile_id]
-    agent = JobSearchAgent(profile, use_openai=False)
     
-    agent.search(keyword=keyword, limit=30)
-    agent.filter_jobs(company_size="mid")
-    agent.rank_jobs(fetch_details=False)
-    applications = agent.generate_applications(top_n=num_applications)
+    if use_benchmark:
+        # Fast path: use 20-job benchmark, no LinkedIn scraping
+        benchmark_path = os.path.join(os.path.dirname(__file__), "..", "data", "benchmark_jobs.json")
+        if not os.path.exists(benchmark_path):
+            raise HTTPException(status_code=500, detail="Benchmark file not found")
+        with open(benchmark_path) as f:
+            benchmark = json.load(f)
+        jobs_data = benchmark.get("interview_worthy", [])[:num_applications]
+        jobs = [_benchmark_job_to_job(bj) for bj in jobs_data]
+        ranker = JobRanker(profile)
+        resume_tailor = ResumeTailor(use_openai=False)
+        cover_letter_gen = CoverLetterGenerator(use_openai=False)
+        from linkedin_scraper.agent.agent import ApplicationPackage
+        from datetime import datetime
+        ranked = ranker.rank_jobs(jobs, top_n=num_applications)
+        applications = []
+        for rj in ranked:
+            tailored = resume_tailor.tailor_resume(profile, rj.job)
+            cover = cover_letter_gen.generate(profile, rj.job)
+            applications.append(ApplicationPackage(
+                job=rj.job, ranked_job=rj, tailored_resume=tailored,
+                cover_letter=cover, created_at=datetime.now().isoformat(),
+            ))
+    else:
+        # Full pipeline: live LinkedIn search (slow - 2-5 min)
+        agent = JobSearchAgent(profile, use_openai=False)
+        agent.search(keyword=keyword, limit=30)
+        agent.filter_jobs(company_size="mid")
+        agent.rank_jobs(fetch_details=False)
+        applications = agent.generate_applications(top_n=num_applications)
     
     evaluator = AgentEvaluator(recruiter_strictness=0.5)
     metrics = evaluator.evaluate_applications(applications)
@@ -821,17 +863,28 @@ async def analyze_bias(
     profile_id: str = Query(..., description="Profile ID"),
     keyword: str = Query("AI Engineer"),
     limit: int = Query(30),
+    use_benchmark: bool = Query(True, description="Use benchmark (fast) vs live LinkedIn (slow)"),
 ):
-    """Analyze potential biases in job search results."""
+    """Analyze potential biases in job search results. Default: benchmark mode (fast)."""
     if profile_id not in profile_store:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     profile = profile_store[profile_id]
-    scraper = LinkedInScraper()
     ranker = JobRanker(profile)
     
-    jobs = scraper.search(keyword=keyword, limit=limit)
-    ranked = ranker.rank_jobs(jobs)
+    if use_benchmark:
+        benchmark_path = os.path.join(os.path.dirname(__file__), "..", "data", "benchmark_jobs.json")
+        if not os.path.exists(benchmark_path):
+            raise HTTPException(status_code=500, detail="Benchmark file not found")
+        with open(benchmark_path) as f:
+            benchmark = json.load(f)
+        jobs_data = benchmark.get("interview_worthy", []) + benchmark.get("reject", [])
+        jobs = [_benchmark_job_to_job(bj) for bj in jobs_data]
+        ranked = ranker.rank_jobs(jobs, top_n=10)
+    else:
+        scraper = LinkedInScraper()
+        jobs = scraper.search(keyword=keyword, limit=limit)
+        ranked = ranker.rank_jobs(jobs)
     
     analyzer = BiasAnalyzer()
     analysis = analyzer.analyze(jobs, ranked, profile)
