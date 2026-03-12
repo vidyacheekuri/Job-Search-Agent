@@ -4,7 +4,7 @@ from fastapi import FastAPI, Query, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 import sys
 import os
 import json
@@ -188,6 +188,25 @@ class JobTextModel(BaseModel):
     location: str = ""
     salary: str = ""
     job_url: str = ""
+
+
+class CsvJobModel(BaseModel):
+    """Job row from the offline CSV dataset."""
+    title: str
+    company: str
+    location: str
+    required_skills: str
+    years_experience: str
+    description: str
+    url: str
+
+
+class OfflineAgentResponse(BaseModel):
+    """Response model for offline CSV-based agent."""
+    reasoning: Optional[str] = None
+    ranked_jobs: list[RankedJobResponse]
+    chosen_index: int
+    tailored_resume: TailoredResumeResponse
 
 
 profile_store: dict[str, UserProfile] = {}
@@ -881,6 +900,205 @@ def _benchmark_job_to_job(bj: dict) -> Job:
     )
 
 
+def _load_csv_jobs() -> list[CsvJobModel]:
+    """Load jobs from the offline CSV dataset."""
+    import csv
+    from pathlib import Path
+
+    csv_path = Path(os.path.dirname(os.path.dirname(__file__))) / "data" / "jobs_dataset.csv"
+    if not csv_path.exists():
+        raise HTTPException(status_code=500, detail="jobs_dataset.csv not found in data/")
+
+    jobs: list[CsvJobModel] = []
+    with csv_path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            jobs.append(
+                CsvJobModel(
+                    title=(row.get("Job Title") or "").strip(),
+                    company=(row.get("Company") or "").strip(),
+                    location=(row.get("Location") or "").strip(),
+                    required_skills=(row.get("Required Skills") or "").strip(),
+                    years_experience=(row.get("Years of Experience Required") or "").strip(),
+                    description=(row.get("Shortened Job Description (5–8 lines)") or "").strip(),
+                    url=(row.get("URL") or "").strip(),
+                )
+            )
+    return jobs
+
+
+def _filter_csv_jobs(jobs: list[CsvJobModel], profile: UserProfile) -> list[CsvJobModel]:
+    """Filtering Tool for CSV jobs (same logic as assignment_agent.filtering_tool)."""
+    preferred_locations = {loc.lower() for loc in profile.preferred_locations}
+    profile_skills = {s.lower() for s in profile.get_all_skills()}
+
+    filtered: list[CsvJobModel] = []
+    for job in jobs:
+        # Location filter
+        if preferred_locations:
+            loc_lower = job.location.lower()
+            if not any(pref in loc_lower for pref in preferred_locations):
+                continue
+
+        # Experience filter
+        if job.years_experience.isdigit():
+            required_years = int(job.years_experience)
+            if profile.years_experience < required_years:
+                continue
+
+        # Skills overlap
+        job_skills = {s.strip().lower() for s in job.required_skills.split(";") if s.strip()}
+        if profile_skills and job_skills and not (profile_skills & job_skills):
+            continue
+
+        filtered.append(job)
+
+    return filtered
+
+
+def _rank_csv_jobs(jobs: list[CsvJobModel], profile: UserProfile, top_n: int = 10) -> list[RankedJob]:
+    """Ranking Tool for CSV jobs, reusing JobRanker."""
+    converted: list[Job] = []
+    for j in jobs:
+        converted.append(
+            Job(
+                position=j.title,
+                company=j.company,
+                company_logo=None,
+                location=j.location,
+                date="",
+                ago_time="",
+                salary="",
+                job_url=j.url,
+                description=j.description,
+                skills=[s.strip() for s in j.required_skills.split(";") if s.strip()] or None,
+            )
+        )
+
+    ranker = JobRanker(profile)
+    return ranker.rank_jobs(converted, top_n=top_n)
+
+
+def _tailor_resume_offline(profile: UserProfile, ranked_job: RankedJob, use_openai: bool = False) -> TailoredResumeResponse:
+    """Resume Tailoring Tool for offline CSV jobs."""
+    tailor = ResumeTailor(use_openai=use_openai)
+    result = tailor.tailor_resume(profile, ranked_job.job)
+
+    return TailoredResumeResponse(
+        summary=result.summary,
+        highlighted_skills=result.highlighted_skills,
+        keywords_added=result.keywords_added,
+        resume_text=result.resume_text,
+        resume_html=result.resume_html,
+        ats_score=result.ats_score,
+        suggestions=result.suggestions,
+    )
+
+
+def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) -> Optional[str]:
+    """LLM reasoning trace for offline agent (OpenAI, Claude, or Ollama)."""
+    provider = os.environ.get("LLM_PROVIDER", "").lower()
+
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    # Auto-detect provider if not explicitly set
+    if not provider:
+        if openai_key:
+            provider = "openai"
+        elif anthropic_key:
+            provider = "anthropic"
+        else:
+            provider = "ollama"  # assume local Ollama if nothing else
+
+    system_msg = (
+        "You are an AI job search agent that must decide which tools to call and in what order. "
+        "Available tools:\n"
+        "1) filtering_tool: filters jobs by location, skills, and experience years.\n"
+        "2) ranking_tool: scores filtered jobs using skill, title, location, and recency.\n"
+        "3) resume_tailoring_tool: generates a tailored resume summary and improves two bullets.\n"
+        "You should reason step by step and output a short explanation of which tools you will call and why."
+    )
+
+    user_msg = (
+        f"Candidate profile:\n"
+        f"- Title: {profile.title}\n"
+        f"- Years of experience: {profile.years_experience}\n"
+        f"- Skills: {', '.join(profile.get_all_skills())}\n"
+        f"- Preferred locations: {', '.join(profile.preferred_locations) or 'not specified'}\n"
+        f"There are {len(jobs)} jobs in the CSV dataset. "
+        "Explain which tools you will use, in what order, and what each contributes. "
+        "Keep it under 8 sentences."
+    )
+
+    reasoning: Optional[str] = None
+
+    try:
+        if provider == "openai" and openai_key:
+            try:
+                from openai import OpenAI
+            except Exception:
+                reasoning = None
+            else:
+                client = OpenAI(api_key=openai_key)
+                resp = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    temperature=0.2,
+                )
+                reasoning = resp.choices[0].message.content
+
+        elif provider == "anthropic" and anthropic_key:
+            try:
+                import anthropic
+            except Exception:
+                reasoning = None
+            else:
+                client = anthropic.Anthropic(api_key=anthropic_key)
+                resp = client.messages.create(
+                    model="claude-3-5-sonnet-20240620",
+                    max_tokens=400,
+                    temperature=0.2,
+                    system=system_msg,
+                    messages=[{"role": "user", "content": user_msg}],
+                )
+                parts: List[str] = []
+                for block in resp.content:
+                    if getattr(block, "type", "") == "text":
+                        parts.append(block.text)
+                reasoning = "\n".join(parts)
+
+        elif provider == "ollama":
+            try:
+                import json
+                import requests
+            except Exception:
+                reasoning = None
+            else:
+                payload = {
+                    "model": os.environ.get("OLLAMA_MODEL", "llama3"),
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "stream": False,
+                }
+                resp = requests.post(
+                    "http://localhost:11434/api/chat",
+                    data=json.dumps(payload),
+                    timeout=60,
+                )
+                if resp.ok:
+                    data = resp.json()
+                    reasoning = data.get("message", {}).get("content", "")
+
+    except Exception:
+        reasoning = None
+
+    return reasoning
 @app.post("/api/evaluate", response_model=EvaluationResponse)
 async def evaluate_applications(
     profile_id: str = Query(..., description="Profile ID"),
@@ -991,6 +1209,54 @@ async def analyze_bias(
         keyword_frequency=analysis.keyword_frequency,
         excluded_keywords=analysis.excluded_keywords,
         recommendations=analysis.recommendations,
+    )
+
+
+@app.post("/api/agent/offline", response_model=OfflineAgentResponse)
+async def run_offline_agent(
+    profile_id: str = Query(..., description="Profile ID"),
+    top_n: int = Query(10, ge=1, le=50, description="Number of top matches to return"),
+    use_openai: bool = Query(False, description="Use OpenAI/LLM for resume tailoring"),
+):
+    """
+    Run the offline CSV-based assignment agent.
+
+    This uses data/jobs_dataset.csv instead of live scraping and runs:
+      1) Filtering Tool over CSV rows
+      2) Ranking Tool using JobRanker
+      3) Resume Tailoring Tool for the best job
+      4) Optional LLM reasoning & trace (OpenAI / Claude / Ollama)
+    """
+    if profile_id not in profile_store:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    profile = profile_store[profile_id]
+
+    jobs = _load_csv_jobs()
+
+    reasoning = _llm_reasoning_trace_offline(profile, jobs)
+
+    filtered = _filter_csv_jobs(jobs, profile)
+    if not filtered:
+        raise HTTPException(status_code=400, detail="No jobs remained after filtering")
+
+    ranked = _rank_csv_jobs(filtered, profile, top_n=top_n)
+    if not ranked:
+        raise HTTPException(status_code=400, detail="No jobs remained after ranking")
+
+    # Convert ranked jobs to API model
+    ranked_responses = [ranked_job_to_response(rj) for rj in ranked]
+
+    best_index = 0
+    best_ranked = ranked[best_index]
+
+    tailored_resume = _tailor_resume_offline(profile, best_ranked, use_openai=use_openai)
+
+    return OfflineAgentResponse(
+        reasoning=reasoning,
+        ranked_jobs=ranked_responses,
+        chosen_index=best_index,
+        tailored_resume=tailored_resume,
     )
 
 

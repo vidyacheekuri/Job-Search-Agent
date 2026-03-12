@@ -10,6 +10,7 @@ import type {
   MultiSourceSearchResponse,
   JobSourceInfo,
   Job,
+  OfflineAgentResult,
 } from '../types/job';
 
 const API_BASE = 'http://localhost:8000';
@@ -356,5 +357,28 @@ export async function analyzeBias(
     throw new Error(`Bias analysis failed: ${response.statusText}`);
   }
   
+  return response.json();
+}
+
+export async function runOfflineAgent(
+  profileId: string,
+  topN: number = 10,
+  useOpenAI: boolean = false,
+): Promise<OfflineAgentResult> {
+  const params = new URLSearchParams({
+    profile_id: profileId,
+    top_n: topN.toString(),
+    use_openai: useOpenAI.toString(),
+  });
+
+  const response = await fetch(`${API_BASE}/api/agent/offline?${params}`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `Offline agent failed: ${response.statusText}`);
+  }
+
   return response.json();
 }

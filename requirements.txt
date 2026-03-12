@@ -9,3 +9,4 @@ pydantic>=2.5.0
 python-multipart>=0.0.6
 openai>=1.0.0
 PyPDF2>=3.0.0
+streamlit>=1.40.0

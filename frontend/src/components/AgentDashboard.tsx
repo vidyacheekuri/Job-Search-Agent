@@ -4,7 +4,7 @@ import { ProfileForm } from './ProfileForm';
 import { RankedJobCard } from './RankedJobCard';
 import { SkeletonList } from './SkeletonCard';
 import { ErrorMessage } from './ErrorMessage';
-import { createProfile, parseResume, uploadPdfResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, analyzeBias } from '../services/api';
+import { createProfile, parseResume, uploadPdfResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, analyzeBias, runOfflineAgent } from '../services/api';
 
 type AgentTab = 'profile' | 'search' | 'results' | 'evaluation' | 'bias';
 
@@ -24,6 +24,8 @@ export const AgentDashboard: React.FC = () => {
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState<CoverLetter | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationMetrics | null>(null);
   const [biasAnalysis, setBiasAnalysis] = useState<BiasAnalysis | null>(null);
+  const [agentMode, setAgentMode] = useState<'live' | 'offline'>('live');
+  const [offlineReasoning, setOfflineReasoning] = useState<string | null>(null);
 
   const handleProfileSubmit = async (profileData: UserProfile) => {
     setIsLoading(true);
@@ -76,8 +78,17 @@ export const AgentDashboard: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, companySize, 50, 20);
-      setRankedJobs(result.jobs);
+      if (agentMode === 'live') {
+        const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, companySize, 50, 20);
+        setRankedJobs(result.jobs);
+        setOfflineReasoning(null);
+      } else {
+        const result = await runOfflineAgent(profileId, 10, false);
+        setRankedJobs(result.ranked_jobs);
+        setOfflineReasoning(result.reasoning ?? null);
+        // Optionally pre-load tailored resume for the best job
+        setGeneratedResume(result.tailored_resume as unknown as TailoredResume);
+      }
       setActiveTab('results');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -198,6 +209,39 @@ export const AgentDashboard: React.FC = () => {
             AI Job Search
           </h2>
           
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Data Source:</span>
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAgentMode('live')}
+                className={`px-3 py-1.5 text-xs sm:text-sm font-medium ${
+                  agentMode === 'live'
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Live Web (LinkedIn)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgentMode('offline')}
+                className={`px-3 py-1.5 text-xs sm:text-sm font-medium border-l border-gray-200 dark:border-gray-600 ${
+                  agentMode === 'offline'
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Offline CSV Dataset
+              </button>
+            </div>
+            {agentMode === 'offline' && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Uses <code>data/jobs_dataset.csv</code> instead of live scraping.
+              </span>
+            )}
+          </div>
+          
           {profile && (
             <div className="mb-6 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
               <p className="text-sm text-teal-700 dark:text-teal-300">
@@ -206,6 +250,7 @@ export const AgentDashboard: React.FC = () => {
             </div>
           )}
 
+          {agentMode === 'live' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -247,6 +292,7 @@ export const AgentDashboard: React.FC = () => {
               </select>
             </div>
           </div>
+          )}
 
           <button
             onClick={handleSearch}
@@ -256,14 +302,14 @@ export const AgentDashboard: React.FC = () => {
             {isLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Searching & Ranking...
+                {agentMode === 'live' ? 'Searching & Ranking...' : 'Running Offline Agent...'}
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
-                Search & Rank Jobs
+                {agentMode === 'live' ? 'Search & Rank Jobs' : 'Run Offline CSV Agent'}
               </>
             )}
           </button>
@@ -273,6 +319,16 @@ export const AgentDashboard: React.FC = () => {
       {/* Results Tab */}
       {activeTab === 'results' && (
         <div>
+          {offlineReasoning && (
+            <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
+              <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 mb-1">
+                LLM Reasoning (Offline Agent)
+              </h3>
+              <p className="text-xs text-indigo-900 dark:text-indigo-100 whitespace-pre-wrap">
+                {offlineReasoning}
+              </p>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Top Matches for You

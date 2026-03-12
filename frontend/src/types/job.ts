@@ -192,3 +192,10 @@ export interface BiasAnalysis {
   excluded_keywords: string[];
   recommendations: string[];
 }
+
+export interface OfflineAgentResult {
+  reasoning?: string | null;
+  ranked_jobs: RankedJob[];
+  chosen_index: number;
+  tailored_resume: TailoredResume;
+}
