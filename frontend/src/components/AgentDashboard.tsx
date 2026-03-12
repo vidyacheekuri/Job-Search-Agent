@@ -88,7 +88,7 @@ export const AgentDashboard: React.FC = () => {
 
   const handleGenerateResume = async (jobUrl: string) => {
     if (!profileId) return;
-    
+
     setIsLoading(true);
     try {
       const resume = await tailorResume(profileId, jobUrl);
@@ -102,7 +102,7 @@ export const AgentDashboard: React.FC = () => {
 
   const handleGenerateCoverLetter = async (jobUrl: string) => {
     if (!profileId) return;
-    
+
     setIsLoading(true);
     try {
       const letter = await generateCoverLetter(profileId, jobUrl);

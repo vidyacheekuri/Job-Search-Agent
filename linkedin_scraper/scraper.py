@@ -147,11 +147,9 @@ class LinkedInScraper:
         """
         Fetch full job details from the job page.
         
-        Args:
-            job: Job object with job_url populated.
-            
-        Returns:
-            Updated Job object with description, skills, apply_method, and applicant_count.
+        This is used both after search (to enrich cards) and when we only have a job_url
+        from the AI Agent tab. In the latter case, position/company are empty and must
+        be populated from the job page to avoid API 400s.
         """
         if not job.job_url:
             return job
@@ -164,12 +162,31 @@ class LinkedInScraper:
 
         soup = BeautifulSoup(response.text, "lxml")
 
-        description_elem = soup.find("div", class_="show-more-less-html__markup")
+        # Ensure position and company are populated when called with a bare Job(url=...)
+        if not job.position:
+            title_elem = (
+                soup.find("h1")
+                or soup.find("h2")
+            )
+            if title_elem:
+                job.position = title_elem.get_text(strip=True)
+
+        if not job.company:
+            company_elem = soup.find("a") or soup.find("span")
+            if company_elem:
+                job.company = company_elem.get_text(strip=True)
+
+        # Description: keep existing selector, plus a couple of fallbacks
+        description_elem = (
+            soup.find("div", class_="show-more-less-html__markup")
+            or soup.find("div", attrs={"data-test-id": "job-details"})  # possible newer layout
+            or soup.find("section", id="job-details")
+        )
         if description_elem:
             job.description = description_elem.get_text(separator="\n", strip=True)
 
         criteria_items = soup.find_all("li", class_="description__job-criteria-item")
-        skills = []
+        skills: list[str] = []
         for item in criteria_items:
             header = item.find("h3", class_="description__job-criteria-subheader")
             if header and "skill" in header.get_text(strip=True).lower():

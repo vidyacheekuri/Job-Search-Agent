@@ -9,6 +9,7 @@ import type {
   BiasAnalysis,
   MultiSourceSearchResponse,
   JobSourceInfo,
+  Job,
 } from '../types/job';
 
 const API_BASE = 'http://localhost:8000';
@@ -194,6 +195,40 @@ export async function tailorResume(
   return response.json();
 }
 
+export async function tailorResumeFromText(
+  profileId: string,
+  job: Job,
+  description: string,
+  useOpenAI: boolean = false,
+): Promise<TailoredResume> {
+  const params = new URLSearchParams({
+    profile_id: profileId,
+    use_openai: useOpenAI.toString(),
+  });
+
+  const payload = {
+    position: job.position,
+    company: job.company,
+    location: job.location,
+    salary: job.salary,
+    job_url: job.job_url,
+    description,
+  };
+
+  const response = await fetch(`${API_BASE}/api/tailor/resume-from-text?${params}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `Resume tailoring failed: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export async function generateCoverLetter(
   profileId: string,
   jobUrl: string,
@@ -213,6 +248,40 @@ export async function generateCoverLetter(
     throw new Error(`Cover letter generation failed: ${response.statusText}`);
   }
   
+  return response.json();
+}
+
+export async function generateCoverLetterFromText(
+  profileId: string,
+  job: Job,
+  description: string,
+  useOpenAI: boolean = false,
+): Promise<CoverLetter> {
+  const params = new URLSearchParams({
+    profile_id: profileId,
+    use_openai: useOpenAI.toString(),
+  });
+
+  const payload = {
+    position: job.position,
+    company: job.company,
+    location: job.location,
+    salary: job.salary,
+    job_url: job.job_url,
+    description,
+  };
+
+  const response = await fetch(`${API_BASE}/api/generate/cover-letter-from-text?${params}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `Cover letter generation failed: ${response.statusText}`);
+  }
+
   return response.json();
 }
 

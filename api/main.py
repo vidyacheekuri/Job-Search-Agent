@@ -180,6 +180,16 @@ class BiasAnalysisResponse(BaseModel):
     recommendations: list[str]
 
 
+class JobTextModel(BaseModel):
+    """Minimal job information when user pastes description manually."""
+    position: str
+    company: str
+    description: str
+    location: str = ""
+    salary: str = ""
+    job_url: str = ""
+
+
 profile_store: dict[str, UserProfile] = {}
 
 
@@ -544,6 +554,49 @@ async def tailor_resume(
     )
 
 
+@app.post("/api/tailor/resume-from-text", response_model=TailoredResumeResponse)
+async def tailor_resume_from_text(
+    profile_id: str = Query(..., description="Profile ID"),
+    use_openai: bool = Query(False, description="Use OpenAI for generation"),
+    job: JobTextModel = None,
+):
+    """
+    Generate a tailored resume using manually provided job description instead of scraping.
+    """
+    if profile_id not in profile_store:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    if job is None:
+        raise HTTPException(status_code=400, detail="Job details are required")
+
+    profile = profile_store[profile_id]
+
+    job_obj = Job(
+        position=job.position,
+        company=job.company,
+        company_logo=None,
+        location=job.location,
+        date="",
+        ago_time="",
+        salary=job.salary,
+        job_url=job.job_url,
+        description=job.description,
+    )
+
+    tailor = ResumeTailor(use_openai=use_openai)
+    result = tailor.tailor_resume(profile, job_obj)
+
+    return TailoredResumeResponse(
+        summary=result.summary,
+        highlighted_skills=result.highlighted_skills,
+        keywords_added=result.keywords_added,
+        resume_text=result.resume_text,
+        resume_html=result.resume_html,
+        ats_score=result.ats_score,
+        suggestions=result.suggestions,
+    )
+
+
 @app.post("/api/generate/cover-letter", response_model=CoverLetterResponse)
 async def generate_cover_letter(
     profile_id: str = Query(..., description="Profile ID"),
@@ -575,6 +628,47 @@ async def generate_cover_letter(
     generator = CoverLetterGenerator(use_openai=use_openai)
     result = generator.generate(profile, job)
     
+    return CoverLetterResponse(
+        content=result.content,
+        html_content=result.html_content,
+        word_count=result.word_count,
+        key_points=result.key_points,
+        personalization_score=result.personalization_score,
+    )
+
+
+@app.post("/api/generate/cover-letter-from-text", response_model=CoverLetterResponse)
+async def generate_cover_letter_from_text(
+    profile_id: str = Query(..., description="Profile ID"),
+    use_openai: bool = Query(False, description="Use OpenAI for generation"),
+    job: JobTextModel = None,
+):
+    """
+    Generate a cover letter using manually provided job description instead of scraping.
+    """
+    if profile_id not in profile_store:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    if job is None:
+        raise HTTPException(status_code=400, detail="Job details are required")
+
+    profile = profile_store[profile_id]
+
+    job_obj = Job(
+        position=job.position,
+        company=job.company,
+        company_logo=None,
+        location=job.location,
+        date="",
+        ago_time="",
+        salary=job.salary,
+        job_url=job.job_url,
+        description=job.description,
+    )
+
+    generator = CoverLetterGenerator(use_openai=use_openai)
+    result = generator.generate(profile, job_obj)
+
     return CoverLetterResponse(
         content=result.content,
         html_content=result.html_content,
