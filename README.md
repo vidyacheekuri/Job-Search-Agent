@@ -43,7 +43,8 @@ cd frontend && npm run dev
 | **Cover Letter Generation** | AI-generated cover letters |
 | **ATS Optimization** | Resume compatibility scoring |
 | **Hiring Simulation** | Mock recruiter evaluation |
-| **Bias Analysis** | Location, company size, experience distribution |
+| **LLM Reasoning & Trace** | Optional LLM explains filtering → ranking → tailoring |
+| **Offline CSV Agent** | Static CSV dataset + same workflow for assignment use |
 
 ---
 
@@ -106,10 +107,9 @@ Open **http://localhost:5173**
 
 ### AI Agent Tab
 1. Create profile (form, PDF upload, or paste text)
-2. Search & rank jobs
+2. Search & rank jobs (Live Web or Offline CSV dataset)
 3. Generate tailored resumes and cover letters
 4. Run evaluation (benchmark-based, ~5 sec)
-5. Analyze bias (benchmark-based, ~2 sec)
 
 ### API Endpoints
 
@@ -123,7 +123,7 @@ Open **http://localhost:5173**
 | POST | `/api/tailor/resume` | Generate tailored resume |
 | POST | `/api/generate/cover-letter` | Generate cover letter |
 | POST | `/api/evaluate` | Hiring simulation |
-| POST | `/api/analyze/bias` | Bias analysis |
+| POST | `/api/agent/offline` | Offline CSV agent (filter → rank → tailor) |
 
 ---
 
@@ -158,7 +158,7 @@ Job-Search-Agent/
 | Layer | Technology |
 |-------|------------|
 | Scraping | Python, BeautifulSoup, Requests |
-| AI | Heuristic matching, OpenAI (optional) |
+| AI | Heuristic + optional LLMs (OpenAI / Claude / Ollama) for reasoning & resume summary |
 | Backend | FastAPI, Uvicorn, Pydantic |
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
 | PDF | PyPDF2 |
@@ -182,6 +182,22 @@ pip install -r requirements.txt
 **Jobs not loading**  
 - LinkedIn may rate-limit; wait and retry  
 - Reduce result limit  
+
+---
+
+## Assignment / Offline CSV Agent
+
+- **Dataset**: `data/jobs_dataset.csv` (Job Title, Company, Location, Required Skills, Years of Experience, Shortened Description, URL).
+- **Script**: `assignment_agent.py` — load CSV, run filtering_tool → ranking_tool → resume_tailoring_tool, print ranked list and tailored resume for top job.
+- **API**: `POST /api/agent/offline` — same workflow; used when you choose **Data Source: Offline CSV Dataset** in the AI Agent tab.
+
+### LLM Reasoning & Trace
+
+The agent can use an LLM to explain its workflow (which tools, in what order). This reasoning is returned by `/api/agent/offline`, `/api/search/ranked`, `/api/agent/run`, and `/api/agent/middle-america`, and shown in the UI as **“LLM Reasoning & Trace”**.
+
+### LLM Providers
+
+Set `LLM_PROVIDER` to `openai`, `anthropic`, or `ollama`. If unset, the app uses OpenAI if `OPENAI_API_KEY` is set, else Anthropic if `ANTHROPIC_API_KEY` is set, else Ollama. Optional: `OLLAMA_MODEL` (default `llama3`). The same provider is used for reasoning traces and for resume summary generation in the tailor.
 
 ---
 

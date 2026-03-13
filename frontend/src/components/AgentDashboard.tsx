@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import type { UserProfile, RankedJob, TailoredResume, CoverLetter, EvaluationMetrics, BiasAnalysis } from '../types/job';
+import type { UserProfile, RankedJob, TailoredResume, CoverLetter, EvaluationMetrics } from '../types/job';
 import { ProfileForm } from './ProfileForm';
 import { RankedJobCard } from './RankedJobCard';
 import { SkeletonList } from './SkeletonCard';
 import { ErrorMessage } from './ErrorMessage';
-import { createProfile, parseResume, uploadPdfResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, analyzeBias, runOfflineAgent } from '../services/api';
+import { createProfile, parseResume, uploadPdfResume, searchAndRankJobs, tailorResume, generateCoverLetter, evaluateApplications, runOfflineAgent } from '../services/api';
 
-type AgentTab = 'profile' | 'search' | 'results' | 'evaluation' | 'bias';
+type AgentTab = 'profile' | 'search' | 'results' | 'evaluation';
 
 export const AgentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AgentTab>('profile');
@@ -23,7 +23,6 @@ export const AgentDashboard: React.FC = () => {
   const [generatedResume, setGeneratedResume] = useState<TailoredResume | null>(null);
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState<CoverLetter | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationMetrics | null>(null);
-  const [biasAnalysis, setBiasAnalysis] = useState<BiasAnalysis | null>(null);
   const [agentMode, setAgentMode] = useState<'live' | 'offline'>('live');
   const [offlineReasoning, setOfflineReasoning] = useState<string | null>(null);
 
@@ -81,7 +80,7 @@ export const AgentDashboard: React.FC = () => {
       if (agentMode === 'live') {
         const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, companySize, 50, 20);
         setRankedJobs(result.jobs);
-        setOfflineReasoning(null);
+        setOfflineReasoning(result.reasoning ?? null);
       } else {
         const result = await runOfflineAgent(profileId, 10, false);
         setRankedJobs(result.ranked_jobs);
@@ -141,22 +140,6 @@ export const AgentDashboard: React.FC = () => {
     }
   };
 
-  const handleAnalyzeBias = async () => {
-    if (!profileId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await analyzeBias(profileId, searchKeyword, 30);
-      setBiasAnalysis(result);
-      setActiveTab('bias');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bias analysis failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const tabClass = (tab: AgentTab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       activeTab === tab
@@ -178,9 +161,6 @@ export const AgentDashboard: React.FC = () => {
         </button>
         <button onClick={() => setActiveTab('evaluation')} disabled={!profileId} className={tabClass('evaluation')}>
           4. Evaluation
-        </button>
-        <button onClick={() => setActiveTab('bias')} disabled={!profileId} className={tabClass('bias')}>
-          5. Bias Analysis
         </button>
       </div>
 
@@ -322,7 +302,7 @@ export const AgentDashboard: React.FC = () => {
           {offlineReasoning && (
             <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
               <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 mb-1">
-                LLM Reasoning (Offline Agent)
+                LLM Reasoning & Trace
               </h3>
               <p className="text-xs text-indigo-900 dark:text-indigo-100 whitespace-pre-wrap">
                 {offlineReasoning}
@@ -340,13 +320,6 @@ export const AgentDashboard: React.FC = () => {
                 className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
               >
                 Run Evaluation
-              </button>
-              <button
-                onClick={handleAnalyzeBias}
-                disabled={isLoading}
-                className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                Analyze Bias
               </button>
             </div>
           </div>
@@ -462,117 +435,6 @@ export const AgentDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Bias Analysis Tab */}
-      {activeTab === 'bias' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Bias Analysis
-          </h2>
-          
-          {!biasAnalysis ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Analyze potential biases in job search results (location, company size, salary, experience)
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                Uses benchmark data (~2 sec). No LinkedIn scraping needed.
-              </p>
-              <button
-                onClick={handleAnalyzeBias}
-                disabled={isLoading}
-                className="px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors disabled:opacity-70"
-              >
-                {isLoading ? 'Analyzing...' : 'Run Analysis'}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Location Distribution</h3>
-                  <div className="space-y-2">
-                    {(() => {
-                      const locData = biasAnalysis.location_bias?.all_jobs ?? biasAnalysis.location_bias;
-                      const entries = typeof locData === 'object' && !Array.isArray(locData)
-                        ? Object.entries(locData as Record<string, number>)
-                        : [];
-                      return entries.slice(0, 8).map(([loc, count]) => (
-                        <div key={loc} className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">{loc}</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Company Size Distribution</h3>
-                  <div className="space-y-2">
-                    {Object.entries(biasAnalysis.company_size_bias).map(([size, count]) => (
-                      <div key={size} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">{size}</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Salary Range Distribution</h3>
-                  <div className="space-y-2">
-                    {Object.entries(biasAnalysis.salary_range_bias).map(([range, count]) => (
-                      <div key={range} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{range}</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Experience Level Distribution</h3>
-                  <div className="space-y-2">
-                    {Object.entries(biasAnalysis.experience_level_bias).map(([level, count]) => (
-                      <div key={level} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">{level}</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {biasAnalysis.excluded_keywords.length > 0 && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <h3 className="font-semibold text-red-800 dark:text-red-300 mb-2">
-                    Potentially Biased Language Detected
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {biasAnalysis.excluded_keywords.map((kw, i) => (
-                      <span key={i} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm rounded">
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {biasAnalysis.recommendations.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Recommendations</h3>
-                  <ul className="space-y-2">
-                    {biasAnalysis.recommendations.map((rec, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="text-teal-500 mt-0.5">→</span>
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
         </div>

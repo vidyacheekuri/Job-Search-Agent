@@ -2,10 +2,18 @@
 
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import Optional
 
 from ..scraper import Job
 from .profile import UserProfile
+
+
+def _similarity(a: str, b: str) -> float:
+    """Return similarity ratio between two strings (0–1)."""
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
 @dataclass
@@ -106,7 +114,40 @@ class JobRanker:
         "garage", "incubator", "accelerator", "y combinator", "yc",
         "techstars", "500 startups",
     ]
-    
+
+    SKILL_SYNONYMS = [
+        {"ml", "machine learning", "machine-learning"},
+        {"dl", "deep learning", "deep-learning", "neural network", "neural networks"},
+        {"nlp", "natural language", "natural language processing"},
+        {"cv", "computer vision"},
+        {"ai", "artificial intelligence"},
+        {"py", "python"},
+        {"tf", "tensorflow"},
+        {"pytorch", "py torch"},
+        {"sklearn", "scikit-learn", "scikit learn"},
+        {"sql", "database", "databases"},
+        {"aws", "amazon web services", "cloud"},
+        {"gcp", "google cloud"},
+        {"azure", "microsoft azure"},
+        {"docker", "containers", "containerization"},
+        {"kubernetes", "k8s"},
+        {"llm", "large language model", "large language models"},
+        {"llms", "large language models"},
+        {"gen ai", "generative ai", "generative artificial intelligence"},
+    ]
+
+    TITLE_WORD_VARIANTS = [
+        {"engineer", "engineering", "engineered"},
+        {"scientist", "science", "scientific"},
+        {"developer", "development", "develop"},
+        {"analyst", "analysis", "analytics"},
+        {"researcher", "research"},
+        {"architect", "architecture"},
+        {"specialist", "specialist"},
+        {"lead", "leader", "leading"},
+        {"manager", "management", "managing"},
+    ]
+
     def __init__(self, profile: UserProfile):
         """
         Initialize ranker with user profile.
@@ -119,70 +160,124 @@ class JobRanker:
         self._target_roles_lower = set(r.lower() for r in profile.target_roles)
         self._preferred_locations_lower = set(l.lower() for l in profile.preferred_locations)
         self._target_companies_lower = set(c.lower() for c in profile.target_companies)
-    
+
+    def _skill_synonym_match(self, a: str, b: str) -> bool:
+        a, b = a.lower().strip(), b.lower().strip()
+        if a == b:
+            return True
+        for group in self.SKILL_SYNONYMS:
+            if a in group and b in group:
+                return True
+        return False
+
+    def _best_skill_closeness(self, profile_skill: str, job_skills: set[str], job_text: str) -> tuple[float, bool]:
+        ps = profile_skill.lower()
+        for js in job_skills:
+            if ps == js or self._skill_synonym_match(ps, js):
+                return 1.0, True
+        if ps in job_text:
+            return 1.0, True
+        for js in job_skills:
+            if ps in js or js in ps:
+                return 0.9, True
+        for group in self.SKILL_SYNONYMS:
+            if ps not in group:
+                continue
+            for term in group:
+                if term != ps and (term in job_text or any(term in js for js in job_skills)):
+                    return 0.9, True
+        best = 0.0
+        for js in job_skills:
+            if len(js) < 2:
+                continue
+            r = _similarity(ps, js)
+            if r > best:
+                best = r
+        for word in re.findall(r'\b[a-z]{3,}\b', job_text):
+            r = _similarity(ps, word)
+            if r > best:
+                best = r
+        if best >= 0.6:
+            return min(best, 0.95), False
+        if best >= 0.45:
+            return 0.5 + (best - 0.45) * (0.45 / 0.15), False
+        return best, False
+
     def _calculate_skill_match(self, job: Job) -> tuple[float, list[str], list[str]]:
-        """Calculate skill match score between 0 and 1."""
         job_text = f"{job.position} {job.description or ''}".lower()
-        
         if job.skills:
-            job_skills = set(s.lower() for s in job.skills)
+            job_skills = set(s.lower().strip() for s in job.skills)
         else:
-            job_skills = set()
-            for skill in self._profile_skills_lower:
-                if skill in job_text:
-                    job_skills.add(skill)
-        
-        if not job_skills and not self._profile_skills_lower:
-            return 0.5, [], []
-        
-        matched = self._profile_skills_lower.intersection(job_skills)
-        
-        job_skills_in_text = set()
+            job_skills = set(re.findall(r'\b[a-z0-9+#.-]{2,}\b', job_text))
         for skill in self._profile_skills_lower:
-            if skill in job_text:
-                job_skills_in_text.add(skill)
-        matched.update(job_skills_in_text)
-        
+            if skill in job_text and " " in skill:
+                job_skills.add(skill)
         if not self._profile_skills_lower:
-            return 0.5, list(matched), []
-        
-        score = len(matched) / len(self._profile_skills_lower)
-        
-        all_job_skills = job_skills.union(job_skills_in_text)
-        missing = all_job_skills - matched
-        
-        return min(score, 1.0), list(matched), list(missing)[:5]
-    
+            return 0.5, [], list(job_skills)[:5]
+        if not job_skills and not job_text.strip():
+            return 0.5, [], []
+        scores = []
+        matched = []
+        for ps in self._profile_skills_lower:
+            score, _ = self._best_skill_closeness(ps, job_skills, job_text)
+            scores.append(score)
+            if score >= 0.5:
+                matched.append(ps)
+        avg = sum(scores) / len(scores)
+        missing = set()
+        for js in job_skills:
+            best = 0.0
+            for ps in self._profile_skills_lower:
+                s, _ = self._best_skill_closeness(ps, {js}, job_text)
+                if s > best:
+                    best = s
+            if best < 0.5:
+                missing.add(js)
+        return min(avg, 1.0), matched, list(missing)[:5]
+
+    def _title_word_closeness(self, pw: str, job_words: set[str]) -> float:
+        pw = pw.lower()
+        if pw in job_words:
+            return 1.0
+        for variant_group in self.TITLE_WORD_VARIANTS:
+            if pw in variant_group and any(jw in variant_group for jw in job_words):
+                return 0.95
+        best = 0.0
+        for jw in job_words:
+            if len(jw) < 2:
+                continue
+            r = _similarity(pw, jw)
+            if r > best:
+                best = r
+        return best if best >= 0.6 else 0.0
+
     def _calculate_title_match(self, job: Job) -> float:
-        """Calculate job title match score between 0 and 1."""
         job_title_lower = job.position.lower()
-        
+        job_words = set(re.findall(r'\b\w+\b', job_title_lower))
+        stop_words = {"the", "a", "an", "and", "or", "at", "in", "for", "to", "of"}
+        job_words -= stop_words
         if not self._target_roles_lower and not self.profile.title:
             return 0.5
-        
         for target in self._target_roles_lower:
             if target in job_title_lower or job_title_lower in target:
                 return 1.0
-        
+            if _similarity(target, job_title_lower) >= 0.7:
+                return 0.9
         if self.profile.title:
             profile_title_lower = self.profile.title.lower()
-            title_words = set(re.findall(r'\b\w+\b', profile_title_lower))
-            job_words = set(re.findall(r'\b\w+\b', job_title_lower))
-            
-            stop_words = {"the", "a", "an", "and", "or", "at", "in", "for", "to", "of"}
-            title_words -= stop_words
-            job_words -= stop_words
-            
+            title_words = set(re.findall(r'\b\w+\b', profile_title_lower)) - stop_words
             if title_words:
-                overlap = len(title_words.intersection(job_words)) / len(title_words)
-                return overlap
-        
-        ai_keywords = ["ai", "machine learning", "ml", "deep learning", "data scientist", 
+                closeness_scores = [self._title_word_closeness(pw, job_words) for pw in title_words]
+                overlap = sum(closeness_scores) / len(title_words)
+                if overlap > 0:
+                    return min(overlap, 1.0)
+        ai_keywords = ["ai", "machine learning", "ml", "deep learning", "data scientist",
                        "nlp", "computer vision", "artificial intelligence"]
         for kw in ai_keywords:
             if kw in job_title_lower:
                 return 0.7
-        
+        if any(_similarity(kw, job_title_lower) >= 0.7 for kw in ai_keywords):
+            return 0.6
         return 0.3
     
     def _calculate_location_match(self, job: Job) -> float:

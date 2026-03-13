@@ -65,21 +65,26 @@ class ResumeTailor:
     def __init__(self, use_openai: bool = False, api_key: Optional[str] = None):
         """
         Initialize resume tailor.
-        
-        Args:
-            use_openai: Whether to use OpenAI API for generation.
-            api_key: OpenAI API key (or set OPENAI_API_KEY env var).
+        use_openai=True uses LLM for summary (OpenAI, Claude, or Ollama per LLM_PROVIDER).
         """
         self.use_openai = use_openai
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self._openai_client = None
-        
-        if self.use_openai and self.api_key:
+        provider = (os.getenv("LLM_PROVIDER") or "").lower()
+        if not provider:
+            if os.getenv("OPENAI_API_KEY") or self.api_key:
+                provider = "openai"
+            elif os.getenv("ANTHROPIC_API_KEY"):
+                provider = "anthropic"
+            else:
+                provider = "ollama"
+        self.provider = provider
+        if self.use_openai and provider == "openai" and (self.api_key or os.getenv("OPENAI_API_KEY")):
             try:
                 from openai import OpenAI
-                self._openai_client = OpenAI(api_key=self.api_key)
+                self._openai_client = OpenAI(api_key=self.api_key or os.getenv("OPENAI_API_KEY"))
             except ImportError:
-                self.use_openai = False
+                pass
     
     def _extract_job_keywords(self, job: Job) -> list[str]:
         """Extract important keywords from job posting."""
@@ -121,9 +126,10 @@ class ResumeTailor:
     
     def _generate_tailored_summary(self, profile: UserProfile, job: Job, keywords: list[str]) -> str:
         """Generate a summary tailored to the job."""
-        if self.use_openai and self._openai_client:
-            return self._generate_summary_openai(profile, job, keywords)
-        
+        if self.use_openai:
+            out = self._generate_summary_llm(profile, job, keywords)
+            if out:
+                return out
         return self._generate_summary_local(profile, job, keywords)
     
     def _generate_summary_local(self, profile: UserProfile, job: Job, keywords: list[str]) -> str:
@@ -151,9 +157,9 @@ class ResumeTailor:
         
         return templates.get(job_category, templates["software_engineer"])
     
-    def _generate_summary_openai(self, profile: UserProfile, job: Job, keywords: list[str]) -> str:
-        """Generate summary using OpenAI API."""
-        prompt = f"""Write a professional resume summary (2-3 sentences) for this candidate applying to this job.
+    def _build_summary_prompt(self, profile: UserProfile, job: Job, keywords: list[str]) -> str:
+        """Build prompt for LLM resume summary."""
+        return f"""Write a professional resume summary (2-3 sentences) for this candidate applying to this job.
 
 Candidate:
 - Name: {profile.name}
@@ -171,16 +177,53 @@ Important keywords to include: {', '.join(keywords[:10])}
 
 Write a compelling, ATS-friendly summary that highlights relevant experience and skills for this specific role."""
 
+    def _generate_summary_llm(self, profile: UserProfile, job: Job, keywords: list[str]) -> Optional[str]:
+        """Generate summary using OpenAI, Claude, or Ollama."""
+        prompt = self._build_summary_prompt(profile, job, keywords)
         try:
-            response = self._openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=200,
-                temperature=0.7
-            )
-            return response.choices[0].message.content.strip()
+            if self.provider == "openai" and (self._openai_client or os.getenv("OPENAI_API_KEY")):
+                client = self._openai_client
+                if not client:
+                    from openai import OpenAI
+                    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                resp = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=200,
+                    temperature=0.7,
+                )
+                return (resp.choices[0].message.content or "").strip()
+            if self.provider == "anthropic" and os.getenv("ANTHROPIC_API_KEY"):
+                import anthropic
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                resp = client.messages.create(
+                    model="claude-3-5-sonnet-20240620",
+                    max_tokens=200,
+                    temperature=0.7,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                parts = [b.text for b in resp.content if getattr(b, "type", "") == "text"]
+                return ("\n".join(parts)).strip() if parts else None
+            if self.provider == "ollama":
+                import json
+                import requests
+                payload = {
+                    "model": os.getenv("OLLAMA_MODEL", "llama3"),
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False,
+                }
+                r = requests.post("http://localhost:11434/api/chat", data=json.dumps(payload), timeout=60)
+                if r.ok:
+                    text = (r.json().get("message") or {}).get("content", "")
+                    return text.strip() if text else None
         except Exception:
-            return self._generate_summary_local(profile, job, keywords)
+            pass
+        return None
+
+    def _generate_summary_openai(self, profile: UserProfile, job: Job, keywords: list[str]) -> str:
+        """Legacy: generate summary via LLM (delegates to _generate_summary_llm)."""
+        out = self._generate_summary_llm(profile, job, keywords)
+        return out or self._generate_summary_local(profile, job, keywords)
     
     def _tailor_experience_bullets(self, profile: UserProfile, job: Job, keywords: list[str]) -> list[dict]:
         """Tailor experience bullets to highlight relevant achievements."""

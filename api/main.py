@@ -21,7 +21,7 @@ from linkedin_scraper.agent.ranker import JobRanker, RankedJob
 from linkedin_scraper.agent.resume_tailor import ResumeTailor
 from linkedin_scraper.agent.cover_letter import CoverLetterGenerator
 from linkedin_scraper.agent.agent import JobSearchAgent
-from linkedin_scraper.agent.evaluation import AgentEvaluator, BiasAnalyzer
+from linkedin_scraper.agent.evaluation import AgentEvaluator
 
 app = FastAPI(
     title="LinkedIn Job Search Agent API",
@@ -97,6 +97,7 @@ class RankedSearchResponse(BaseModel):
     keyword: str
     location: str
     profile_name: str
+    reasoning: Optional[str] = None
 
 
 class ProfileModel(BaseModel):
@@ -167,17 +168,6 @@ class EvaluationResponse(BaseModel):
     rejection_rate: float
     skill_coverage: float
     recruiter_feedback: list[dict]
-
-
-class BiasAnalysisResponse(BaseModel):
-    """Bias analysis response."""
-    location_bias: dict
-    company_size_bias: dict
-    salary_range_bias: dict
-    experience_level_bias: dict
-    keyword_frequency: dict
-    excluded_keywords: list[str]
-    recommendations: list[str]
 
 
 class JobTextModel(BaseModel):
@@ -258,7 +248,6 @@ async def root():
             "Resume Tailoring",
             "Cover Letter Generation",
             "Hiring Simulation",
-            "Bias Analysis",
         ]
     }
 
@@ -513,6 +502,7 @@ async def search_and_rank_jobs(
         raise HTTPException(status_code=404, detail="Profile not found. Create profile first.")
     
     profile = profile_store[profile_id]
+    reasoning = _llm_reasoning_trace_generic(profile, job_count=0, source="live")
     scraper = LinkedInScraper()
     
     jobs = scraper.search(keyword=keyword, location=location, limit=limit)
@@ -528,6 +518,7 @@ async def search_and_rank_jobs(
         keyword=keyword,
         location=location,
         profile_name=profile.name,
+        reasoning=reasoning,
     )
 
 
@@ -712,6 +703,7 @@ async def run_agent_pipeline(
         raise HTTPException(status_code=404, detail="Profile not found")
     
     profile = profile_store[profile_id]
+    reasoning = _llm_reasoning_trace_generic(profile, job_count=0, source="live")
     agent = JobSearchAgent(profile, use_openai=use_openai)
     
     report = agent.run_full_pipeline(
@@ -725,6 +717,7 @@ async def run_agent_pipeline(
     applications = agent.get_applications()
     
     return {
+        "reasoning": reasoning,
         "report": report.to_dict(),
         "applications": [
             {
@@ -764,6 +757,7 @@ async def run_middle_america_pipeline(
         raise HTTPException(status_code=404, detail="Profile not found")
     
     profile = profile_store[profile_id]
+    reasoning = _llm_reasoning_trace_generic(profile, job_count=0, source="live")
     agent = JobSearchAgent(profile, use_openai=use_openai, enable_logging=True)
     
     results = agent.run_middle_america_pipeline(
@@ -777,6 +771,7 @@ async def run_middle_america_pipeline(
         top_n_applications=top_n_applications,
     )
     
+    results["reasoning"] = reasoning
     applications = agent.get_applications()
     
     results["applications_detail"] = [
@@ -995,50 +990,54 @@ def _tailor_resume_offline(profile: UserProfile, ranked_job: RankedJob, use_open
     )
 
 
-def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) -> Optional[str]:
-    """LLM reasoning trace for offline agent (OpenAI, Claude, or Ollama)."""
+def _llm_reasoning_trace_generic(profile: UserProfile, job_count: int = 0, source: str = "live") -> Optional[str]:
+    """Shared LLM reasoning trace for live and CSV workflows (OpenAI, Claude, or Ollama)."""
     provider = os.environ.get("LLM_PROVIDER", "").lower()
-
     openai_key = os.environ.get("OPENAI_API_KEY")
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    # Auto-detect provider if not explicitly set
     if not provider:
         if openai_key:
             provider = "openai"
         elif anthropic_key:
             provider = "anthropic"
         else:
-            provider = "ollama"  # assume local Ollama if nothing else
-
+            provider = "ollama"
     system_msg = (
         "You are an AI job search agent that must decide which tools to call and in what order. "
         "Available tools:\n"
-        "1) filtering_tool: filters jobs by location, skills, and experience years.\n"
-        "2) ranking_tool: scores filtered jobs using skill, title, location, and recency.\n"
-        "3) resume_tailoring_tool: generates a tailored resume summary and improves two bullets.\n"
+        "1) filtering_tool: filters jobs by location, skills, experience years, and company exclusion.\n"
+        "2) ranking_tool: scores jobs by skill match, title, location, and experience alignment.\n"
+        "3) resume_tailoring_tool: rewrites the professional summary and two experience bullets for the chosen job.\n"
         "You should reason step by step and output a short explanation of which tools you will call and why."
     )
-
-    user_msg = (
-        f"Candidate profile:\n"
-        f"- Title: {profile.title}\n"
-        f"- Years of experience: {profile.years_experience}\n"
-        f"- Skills: {', '.join(profile.get_all_skills())}\n"
-        f"- Preferred locations: {', '.join(profile.preferred_locations) or 'not specified'}\n"
-        f"There are {len(jobs)} jobs in the CSV dataset. "
-        "Explain which tools you will use, in what order, and what each contributes. "
-        "Keep it under 8 sentences."
-    )
-
+    if source == "csv":
+        user_msg = (
+            f"Candidate profile:\n"
+            f"- Title: {profile.title}\n"
+            f"- Years of experience: {profile.years_experience}\n"
+            f"- Skills: {', '.join(profile.get_all_skills())}\n"
+            f"- Preferred locations: {', '.join(profile.preferred_locations) or 'not specified'}\n"
+            f"There are {job_count} jobs in the CSV dataset. "
+            "Explain which tools you will use, in what order, and what each contributes. Keep it under 8 sentences."
+        )
+    else:
+        user_msg = (
+            f"Candidate profile:\n"
+            f"- Title: {profile.title}\n"
+            f"- Years of experience: {profile.years_experience}\n"
+            f"- Skills: {', '.join(profile.get_all_skills())}\n"
+            f"- Preferred locations: {', '.join(profile.preferred_locations) or 'not specified'}\n"
+            "The agent will search LinkedIn (and optionally other sources) for jobs, then apply filtering "
+            "(location, experience, company size), then rank jobs by skill and experience match, then select "
+            "the best job and tailor the resume (summary + 2 bullets). Explain which tools are used and in what order, and why."
+        )
     reasoning: Optional[str] = None
-
     try:
         if provider == "openai" and openai_key:
             try:
                 from openai import OpenAI
             except Exception:
-                reasoning = None
+                pass
             else:
                 client = OpenAI(api_key=openai_key)
                 resp = client.chat.completions.create(
@@ -1050,12 +1049,11 @@ def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) 
                     temperature=0.2,
                 )
                 reasoning = resp.choices[0].message.content
-
         elif provider == "anthropic" and anthropic_key:
             try:
                 import anthropic
             except Exception:
-                reasoning = None
+                pass
             else:
                 client = anthropic.Anthropic(api_key=anthropic_key)
                 resp = client.messages.create(
@@ -1070,13 +1068,12 @@ def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) 
                     if getattr(block, "type", "") == "text":
                         parts.append(block.text)
                 reasoning = "\n".join(parts)
-
         elif provider == "ollama":
             try:
                 import json
                 import requests
             except Exception:
-                reasoning = None
+                pass
             else:
                 payload = {
                     "model": os.environ.get("OLLAMA_MODEL", "llama3"),
@@ -1094,11 +1091,16 @@ def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) 
                 if resp.ok:
                     data = resp.json()
                     reasoning = data.get("message", {}).get("content", "")
-
     except Exception:
         reasoning = None
-
     return reasoning
+
+
+def _llm_reasoning_trace_offline(profile: UserProfile, jobs: list[CsvJobModel]) -> Optional[str]:
+    """LLM reasoning trace for offline CSV agent; delegates to generic helper."""
+    return _llm_reasoning_trace_generic(profile, job_count=len(jobs), source="csv")
+
+
 @app.post("/api/evaluate", response_model=EvaluationResponse)
 async def evaluate_applications(
     profile_id: str = Query(..., description="Profile ID"),
@@ -1167,48 +1169,6 @@ async def evaluate_applications(
             }
             for f in metrics.recruiter_feedback
         ],
-    )
-
-
-@app.post("/api/analyze/bias", response_model=BiasAnalysisResponse)
-async def analyze_bias(
-    profile_id: str = Query(..., description="Profile ID"),
-    keyword: str = Query("AI Engineer"),
-    limit: int = Query(30),
-    use_benchmark: bool = Query(True, description="Use benchmark (fast) vs live LinkedIn (slow)"),
-):
-    """Analyze potential biases in job search results. Default: benchmark mode (fast)."""
-    if profile_id not in profile_store:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    
-    profile = profile_store[profile_id]
-    ranker = JobRanker(profile)
-    
-    if use_benchmark:
-        benchmark_path = os.path.join(os.path.dirname(__file__), "..", "data", "benchmark_jobs.json")
-        if not os.path.exists(benchmark_path):
-            raise HTTPException(status_code=500, detail="Benchmark file not found")
-        with open(benchmark_path) as f:
-            benchmark = json.load(f)
-        jobs_data = benchmark.get("interview_worthy", []) + benchmark.get("reject", [])
-        jobs = [_benchmark_job_to_job(bj) for bj in jobs_data]
-        ranked = ranker.rank_jobs(jobs, top_n=10)
-    else:
-        scraper = LinkedInScraper()
-        jobs = scraper.search(keyword=keyword, limit=limit)
-        ranked = ranker.rank_jobs(jobs)
-    
-    analyzer = BiasAnalyzer()
-    analysis = analyzer.analyze(jobs, ranked, profile)
-    
-    return BiasAnalysisResponse(
-        location_bias=analysis.location_bias,
-        company_size_bias=analysis.company_size_bias,
-        salary_range_bias=analysis.salary_range_bias,
-        experience_level_bias=analysis.experience_level_bias,
-        keyword_frequency=analysis.keyword_frequency,
-        excluded_keywords=analysis.excluded_keywords,
-        recommendations=analysis.recommendations,
     )
 
 

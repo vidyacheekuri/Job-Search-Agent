@@ -6,7 +6,6 @@ import type {
   TailoredResume,
   CoverLetter,
   EvaluationMetrics,
-  BiasAnalysis,
   MultiSourceSearchResponse,
   JobSourceInfo,
   Job,
@@ -333,28 +332,6 @@ export async function evaluateApplications(
   
   if (!response.ok) {
     throw new Error(`Evaluation failed: ${response.statusText}`);
-  }
-  
-  return response.json();
-}
-
-export async function analyzeBias(
-  profileId: string,
-  keyword: string = 'AI Engineer',
-  limit: number = 30,
-): Promise<BiasAnalysis> {
-  const params = new URLSearchParams({
-    profile_id: profileId,
-    keyword,
-    limit: limit.toString(),
-  });
-  
-  const response = await fetch(`${API_BASE}/api/analyze/bias?${params}`, {
-    method: 'POST',
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Bias analysis failed: ${response.statusText}`);
   }
   
   return response.json();

@@ -60,6 +60,7 @@ export interface RankedSearchResponse {
   keyword: string;
   location: string;
   profile_name: string;
+  reasoning?: string | null;
 }
 
 export interface SearchFilters {
@@ -181,16 +182,6 @@ export interface EvaluationMetrics {
   rejection_rate: number;
   skill_coverage: number;
   recruiter_feedback: RecruiterFeedback[];
-}
-
-export interface BiasAnalysis {
-  location_bias: Record<string, number>;
-  company_size_bias: Record<string, number>;
-  salary_range_bias: Record<string, number>;
-  experience_level_bias: Record<string, number>;
-  keyword_frequency: Record<string, number>;
-  excluded_keywords: string[];
-  recommendations: string[];
 }
 
 export interface OfflineAgentResult {
