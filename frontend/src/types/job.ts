@@ -152,6 +152,8 @@ export interface TailoredResume {
   resume_html: string;
   ats_score: number;
   suggestions: string[];
+  /** Exactly 2 experience bullets modified for the job (assignment-style, app-wide) */
+  modified_bullets?: string[] | null;
 }
 
 export interface CoverLetter {

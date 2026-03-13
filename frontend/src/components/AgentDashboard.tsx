@@ -311,7 +311,7 @@ export const AgentDashboard: React.FC = () => {
           )}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Top Matches for You
+              Ranked job list with scores
             </h2>
             <div className="flex gap-2">
               <button
@@ -328,15 +328,41 @@ export const AgentDashboard: React.FC = () => {
             <SkeletonList count={6} />
           ) : (
             <div className="space-y-4">
-              {rankedJobs.map((rankedJob, index) => (
-                <RankedJobCard
-                  key={`${rankedJob.job.job_url}-${index}`}
-                  rankedJob={rankedJob}
-                  onGenerateResume={handleGenerateResume}
-                  onGenerateCoverLetter={handleGenerateCoverLetter}
-                  isGenerating={isLoading}
-                />
-              ))}
+              {rankedJobs.length > 0 && (
+                <>
+                  <h3 className="text-sm font-semibold text-teal-700 dark:text-teal-300">
+                    Top 3 jobs
+                  </h3>
+                  {rankedJobs.slice(0, 3).map((rankedJob, index) => (
+                    <RankedJobCard
+                      key={`top-${rankedJob.job.job_url}-${index}`}
+                      rankedJob={rankedJob}
+                      onGenerateResume={handleGenerateResume}
+                      onGenerateCoverLetter={handleGenerateCoverLetter}
+                      isGenerating={isLoading}
+                    />
+                  ))}
+                  {rankedJobs.length > 3 && (
+                    <>
+                      <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-6">
+                        Remaining matches
+                      </h3>
+                      {rankedJobs.slice(3).map((rankedJob, index) => (
+                        <RankedJobCard
+                          key={`${rankedJob.job.job_url}-${index + 3}`}
+                          rankedJob={rankedJob}
+                          onGenerateResume={handleGenerateResume}
+                          onGenerateCoverLetter={handleGenerateCoverLetter}
+                          isGenerating={isLoading}
+                        />
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+              {rankedJobs.length === 0 && !isLoading && (
+                <p className="text-gray-500 dark:text-gray-400 text-sm">No ranked jobs yet. Run a search above.</p>
+              )}
             </div>
           )}
         </div>
@@ -464,6 +490,28 @@ export const AgentDashboard: React.FC = () => {
                     <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm font-medium">
                       ATS Score: {generatedResume.ats_score}%
                     </div>
+                  </div>
+                  {/* Assignment-style: summary + aligned skills + exactly 2 modified bullets (app-wide) */}
+                  <div className="mb-4 space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Rewritten Professional Summary</p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200">{generatedResume.summary}</p>
+                    </div>
+                    {generatedResume.highlighted_skills?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Highlight Aligned Skills</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{generatedResume.highlighted_skills.join(', ')}</p>
+                      </div>
+                    )}
+                    {generatedResume.modified_bullets && generatedResume.modified_bullets.length >= 2 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Modified Experience Bullet Points (exactly 2)</p>
+                        <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                          {generatedResume.modified_bullets.map((b, i) => <li key={i}>{b}</li>)}
+                        </ul>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Rest of resume unchanged.</p>
+                      </div>
+                    )}
                   </div>
                   {generatedResume.suggestions.length > 0 && (
                     <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">

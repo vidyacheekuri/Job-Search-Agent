@@ -22,6 +22,8 @@ from linkedin_scraper.agent.resume_tailor import ResumeTailor
 from linkedin_scraper.agent.cover_letter import CoverLetterGenerator
 from linkedin_scraper.agent.agent import JobSearchAgent
 from linkedin_scraper.agent.evaluation import AgentEvaluator
+from linkedin_scraper.agent.llm_tool_agent import run_llm_tool_agent
+from assignment_agent import get_two_modified_bullets
 
 app = FastAPI(
     title="LinkedIn Job Search Agent API",
@@ -128,7 +130,7 @@ class ProfileModel(BaseModel):
 
 
 class TailoredResumeResponse(BaseModel):
-    """Tailored resume response."""
+    """Tailored resume response (assignment-style: summary + exactly 2 modified bullets + aligned skills app-wide)."""
     summary: str
     highlighted_skills: list[str]
     keywords_added: list[str]
@@ -136,6 +138,7 @@ class TailoredResumeResponse(BaseModel):
     resume_html: str
     ats_score: float
     suggestions: list[str]
+    modified_bullets: Optional[List[str]] = None  # Exactly 2 experience bullets modified for the job (app-wide)
 
 
 class CoverLetterResponse(BaseModel):
@@ -508,7 +511,8 @@ async def search_and_rank_jobs(
     jobs = scraper.search(keyword=keyword, location=location, limit=limit)
     
     jobs = JobRanker.filter_by_company_size(jobs, company_size)
-    
+    jobs = _filter_live_jobs(jobs, profile)  # Assignment-style: company exclusion + location preference
+
     ranker = JobRanker(profile)
     ranked_jobs = ranker.rank_jobs(jobs, top_n=top_n)
     
@@ -552,7 +556,8 @@ async def tailor_resume(
     
     tailor = ResumeTailor(use_openai=use_openai)
     result = tailor.tailor_resume(profile, job)
-    
+    modified_bullets = get_two_modified_bullets(profile, job, result.highlighted_skills)
+
     return TailoredResumeResponse(
         summary=result.summary,
         highlighted_skills=result.highlighted_skills,
@@ -561,6 +566,7 @@ async def tailor_resume(
         resume_html=result.resume_html,
         ats_score=result.ats_score,
         suggestions=result.suggestions,
+        modified_bullets=modified_bullets,
     )
 
 
@@ -595,6 +601,7 @@ async def tailor_resume_from_text(
 
     tailor = ResumeTailor(use_openai=use_openai)
     result = tailor.tailor_resume(profile, job_obj)
+    modified_bullets = get_two_modified_bullets(profile, job_obj, result.highlighted_skills)
 
     return TailoredResumeResponse(
         summary=result.summary,
@@ -604,6 +611,7 @@ async def tailor_resume_from_text(
         resume_html=result.resume_html,
         ats_score=result.ats_score,
         suggestions=result.suggestions,
+        modified_bullets=modified_bullets,
     )
 
 
@@ -922,32 +930,51 @@ def _load_csv_jobs() -> list[CsvJobModel]:
     return jobs
 
 
-def _filter_csv_jobs(jobs: list[CsvJobModel], profile: UserProfile) -> list[CsvJobModel]:
-    """Filtering Tool for CSV jobs (same logic as assignment_agent.filtering_tool)."""
+# Company exclusion for filtering (e.g. FAANG) – used for both live and CSV
+_EXCLUDED_COMPANIES = {"meta", "facebook", "amazon", "apple", "netflix", "google", "alphabet"}
+
+
+def _filter_live_jobs(jobs: list, profile: UserProfile) -> list:
+    """Apply assignment-style filtering to live scraped jobs: company exclusion, location preference."""
+    if not jobs:
+        return jobs
+    preferred = {loc.lower() for loc in (profile.preferred_locations or [])}
+    filtered = []
+    for job in jobs:
+        company = (getattr(job, "company", None) or "").lower()
+        if any(ex in company for ex in _EXCLUDED_COMPANIES):
+            continue
+        location = (getattr(job, "location", None) or "").lower()
+        if preferred and location and not any(p in location for p in preferred):
+            continue
+        filtered.append(job)
+    return filtered
+
+
+def _filter_csv_jobs(
+    jobs: list[CsvJobModel],
+    profile: UserProfile,
+    remote_only: bool = False,
+) -> list[CsvJobModel]:
+    """Filtering Tool for CSV jobs. Rules: location preference, experience limit, company exclusion, optional remote-only."""
     preferred_locations = {loc.lower() for loc in profile.preferred_locations}
     profile_skills = {s.lower() for s in profile.get_all_skills()}
+    apply_remote_only = remote_only or (profile.remote_preference or "").lower() == "remote"
 
     filtered: list[CsvJobModel] = []
     for job in jobs:
-        # Location filter
-        if preferred_locations:
-            loc_lower = job.location.lower()
-            if not any(pref in loc_lower for pref in preferred_locations):
-                continue
-
-        # Experience filter
-        if job.years_experience.isdigit():
-            required_years = int(job.years_experience)
-            if profile.years_experience < required_years:
-                continue
-
-        # Skills overlap
-        job_skills = {s.strip().lower() for s in job.required_skills.split(";") if s.strip()}
+        if any(ex in (job.company or "").lower() for ex in _EXCLUDED_COMPANIES):
+            continue
+        if apply_remote_only and "remote" not in (job.location or "").lower():
+            continue
+        if preferred_locations and not any(pref in (job.location or "").lower() for pref in preferred_locations):
+            continue
+        if job.years_experience.isdigit() and profile.years_experience < int(job.years_experience):
+            continue
+        job_skills = {s.strip().lower() for s in (job.required_skills or "").split(";") if s.strip()}
         if profile_skills and job_skills and not (profile_skills & job_skills):
             continue
-
         filtered.append(job)
-
     return filtered
 
 
@@ -975,9 +1002,10 @@ def _rank_csv_jobs(jobs: list[CsvJobModel], profile: UserProfile, top_n: int = 1
 
 
 def _tailor_resume_offline(profile: UserProfile, ranked_job: RankedJob, use_openai: bool = False) -> TailoredResumeResponse:
-    """Resume Tailoring Tool for offline CSV jobs."""
+    """Resume Tailoring Tool for offline CSV jobs (same assignment-style: summary + 2 bullets + aligned skills)."""
     tailor = ResumeTailor(use_openai=use_openai)
     result = tailor.tailor_resume(profile, ranked_job.job)
+    modified_bullets = get_two_modified_bullets(profile, ranked_job.job, list(ranked_job.matched_skills))
 
     return TailoredResumeResponse(
         summary=result.summary,
@@ -987,6 +1015,7 @@ def _tailor_resume_offline(profile: UserProfile, ranked_job: RankedJob, use_open
         resume_html=result.resume_html,
         ats_score=result.ats_score,
         suggestions=result.suggestions,
+        modified_bullets=modified_bullets,
     )
 
 
@@ -1191,26 +1220,56 @@ async def run_offline_agent(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     profile = profile_store[profile_id]
-
     jobs = _load_csv_jobs()
 
-    reasoning = _llm_reasoning_trace_offline(profile, jobs)
+    profile_summary = (
+        f"Title: {profile.title}, Years: {profile.years_experience}, "
+        f"Skills: {', '.join(profile.get_all_skills()[:12])}, "
+        f"Locations: {', '.join(profile.preferred_locations) or 'Any'}."
+    )
+    state: dict = {"filtered": None, "ranked": None, "tailored": None}
 
-    filtered = _filter_csv_jobs(jobs, profile)
-    if not filtered:
-        raise HTTPException(status_code=400, detail="No jobs remained after filtering")
+    def execute_tool(tool_name: str, arguments: dict) -> str:
+        if tool_name == "filtering_tool":
+            state["filtered"] = _filter_csv_jobs(jobs, profile)
+            return f"Filtered to {len(state['filtered'])} jobs."
+        if tool_name == "ranking_tool":
+            if not state.get("filtered"):
+                return "Error: call filtering_tool first."
+            top_n = arguments.get("top_n", 10)
+            state["ranked"] = _rank_csv_jobs(state["filtered"], profile, top_n=top_n)
+            top3 = state["ranked"][:3]
+            return f"Ranked {len(state['ranked'])} jobs. Top 3: " + "; ".join(f"{rj.job.position} at {rj.job.company} ({rj.score}%)" for rj in top3)
+        if tool_name == "resume_tailoring_tool":
+            if not state.get("ranked"):
+                return "Error: call ranking_tool first."
+            idx = max(0, int(arguments.get("job_rank", 1)) - 1)
+            best = state["ranked"][idx]
+            state["tailored"] = _tailor_resume_offline(profile, best, use_openai=use_openai)
+            return f"Tailored resume generated for {best.job.position} at {best.job.company}."
+        return "Unknown tool."
 
-    ranked = _rank_csv_jobs(filtered, profile, top_n=top_n)
-    if not ranked:
-        raise HTTPException(status_code=400, detail="No jobs remained after ranking")
+    reasoning, success = run_llm_tool_agent(
+        profile_summary=profile_summary,
+        job_count=len(jobs),
+        execute_tool=execute_tool,
+    )
 
-    # Convert ranked jobs to API model
+    if success and state.get("ranked") and state.get("tailored") is not None:
+        ranked = state["ranked"]
+        tailored_resume = state["tailored"]
+    else:
+        filtered = _filter_csv_jobs(jobs, profile)
+        if not filtered:
+            raise HTTPException(status_code=400, detail="No jobs remained after filtering")
+        ranked = _rank_csv_jobs(filtered, profile, top_n=top_n)
+        if not ranked:
+            raise HTTPException(status_code=400, detail="No jobs remained after ranking")
+        best_ranked = ranked[0]
+        tailored_resume = _tailor_resume_offline(profile, best_ranked, use_openai=use_openai)
+
     ranked_responses = [ranked_job_to_response(rj) for rj in ranked]
-
     best_index = 0
-    best_ranked = ranked[best_index]
-
-    tailored_resume = _tailor_resume_offline(profile, best_ranked, use_openai=use_openai)
 
     return OfflineAgentResponse(
         reasoning=reasoning,

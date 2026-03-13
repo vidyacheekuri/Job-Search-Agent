@@ -191,6 +191,18 @@ pip install -r requirements.txt
 - **Script**: `assignment_agent.py` — load CSV, run filtering_tool → ranking_tool → resume_tailoring_tool, print ranked list and tailored resume for top job.
 - **API**: `POST /api/agent/offline` — same workflow; used when you choose **Data Source: Offline CSV Dataset** in the AI Agent tab.
 
+### Filtering Tool rules (for report)
+
+The Filtering Tool implements: **(1) Location preference** — keep jobs matching `profile.preferred_locations`; **(2) Experience limit** — keep only if `profile.years_experience >=` job’s required years; **(3) Company exclusion** — exclude FAANG etc. (see `EXCLUDED_COMPANIES`); **(4) Remote-only (optional)** — when `profile.remote_preference == "remote"`, keep only jobs with `"remote"` in location. Rules are documented in **`docs/FILTERING_RULES.md`** for use in your report.
+
+### Ranking Tool (for report)
+
+The Ranking Tool: assigns **scores based on skill matching**; considers **experience alignment** and **location match** (optional); outputs a **ranked list with clear scores** (0–100). The UI and script **clearly display** the **ranked job list with scores** and **Top 3 jobs**. See **`docs/RANKING_SYSTEM.md`** for the report.
+
+### Resume Tailoring (for report)
+
+The agent **tailors the resume for only the top-ranked job**. It **rewrites the Professional Summary**; **modifies exactly 2 experience bullet points** (from the profile, tailored to the job); **highlights aligned skills**; and **does not regenerate the entire resume**. These behaviors are implemented **app-wide** (live search, agent run, middle-America, and offline CSV). See **`docs/RESUME_TAILORING_REQUIREMENTS.md`** for the report.
+
 ### LLM Reasoning & Trace
 
 The agent can use an LLM to explain its workflow (which tools, in what order). This reasoning is returned by `/api/agent/offline`, `/api/search/ranked`, `/api/agent/run`, and `/api/agent/middle-america`, and shown in the UI as **“LLM Reasoning & Trace”**.

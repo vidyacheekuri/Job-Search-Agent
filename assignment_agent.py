@@ -22,6 +22,7 @@ from typing import List
 from linkedin_scraper.agent.profile import UserProfile
 from linkedin_scraper.agent.ranker import JobRanker, RankedJob
 from linkedin_scraper.agent.resume_tailor import ResumeTailor
+from linkedin_scraper.agent.llm_tool_agent import run_llm_tool_agent
 
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "jobs_dataset.csv"
@@ -68,37 +69,56 @@ EXCLUDED_COMPANIES = {
 }
 
 
-def filtering_tool(jobs: List[CsvJob], profile: UserProfile) -> List[CsvJob]:
+def filtering_tool(
+    jobs: List[CsvJob],
+    profile: UserProfile,
+    remote_only: bool = False,
+) -> List[CsvJob]:
     """Filtering Tool – rule-based filtering over the CSV dataset.
 
-    Simple rules:
-      - Keep jobs whose location roughly matches one of profile.preferred_locations
-        (or keep all if none specified).
-      - Keep jobs where required years <= profile.years_experience (if filled).
-      - Keep jobs where there is at least one overlapping skill.
-      - Exclude companies in EXCLUDED_COMPANIES.
+    Implements the following rules (for report / assignment):
+
+    1. Location preference: Keep jobs whose location matches one of profile.preferred_locations
+       (e.g. "United States", "Remote"). If none specified, all locations pass.
+
+    2. Experience limit: Keep only jobs where required years <= profile.years_experience.
+       If the job lists a numeric requirement (e.g. "3" years), the candidate must meet it.
+
+    3. Company exclusion: Exclude companies in EXCLUDED_COMPANIES (e.g. FAANG: Meta, Facebook,
+       Amazon, Apple, Netflix, Google, Alphabet).
+
+    4. Remote-only filter (optional): If remote_only=True or profile.remote_preference == "remote",
+       keep only jobs whose location string contains "remote".
     """
     preferred_locations = {loc.lower() for loc in profile.preferred_locations}
     profile_skills = {s.lower() for s in profile.get_all_skills()}
+    apply_remote_only = remote_only or (profile.remote_preference or "").lower() == "remote"
 
     filtered: List[CsvJob] = []
     for job in jobs:
+        # Rule: Company exclusion
         company_lower = job.company.lower()
         if any(ex in company_lower for ex in EXCLUDED_COMPANIES):
             continue
-        # Location filter
+
+        # Rule: Remote-only (optional)
+        if apply_remote_only:
+            if "remote" not in (job.location or "").lower():
+                continue
+
+        # Rule: Location preference
         if preferred_locations:
-            loc_lower = job.location.lower()
+            loc_lower = (job.location or "").lower()
             if not any(pref in loc_lower for pref in preferred_locations):
                 continue
 
-        # Experience filter
+        # Rule: Experience limit
         if job.years_experience.isdigit():
             required_years = int(job.years_experience)
             if profile.years_experience < required_years:
                 continue
 
-        # Skills overlap
+        # Skills overlap (ensures at least one skill match)
         job_skills = {s.strip().lower() for s in job.required_skills.split(";") if s.strip()}
         if profile_skills and job_skills and not (profile_skills & job_skills):
             continue
@@ -109,10 +129,14 @@ def filtering_tool(jobs: List[CsvJob], profile: UserProfile) -> List[CsvJob]:
 
 
 def ranking_tool(jobs: List[CsvJob], profile: UserProfile, top_n: int = 10) -> List[RankedJob]:
-    """Ranking Tool – score and rank CSV jobs using existing JobRanker logic.
+    """Ranking Tool – score and rank jobs. Outputs a ranked list with clear scores.
 
-    We convert CsvJob rows into linkedin_scraper.scraper.Job objects so we can
-    reuse the ranking implementation for skills, location, experience, etc.
+    Assignment requirements:
+    - Assigns scores based on skill matching (profile vs job skills).
+    - Considers experience alignment (profile years vs job requirement).
+    - Optionally considers location match (preferred locations vs job location).
+    - Returns a ranked list with clear scores (0–100 per job).
+    Display: show ranked job list with scores and clearly show Top 3 jobs.
     """
     from linkedin_scraper.scraper import Job as ScrapedJob  # local import to avoid cycles
 
@@ -139,33 +163,85 @@ def ranking_tool(jobs: List[CsvJob], profile: UserProfile, top_n: int = 10) -> L
 
 
 def resume_tailoring_tool(profile: UserProfile, ranked_job: RankedJob, use_openai: bool = False) -> str:
-    """Resume Tailoring Tool – generate a tailored resume summary + 2 bullets.
+    """Resume Tailoring Tool – for the top-ranked job only.
 
-    For the assignment we can reuse ResumeTailor and then post-process its output
-    to extract a short summary and highlight two experience bullet points.
+    Assignment requirements:
+    - Tailor for only the top-ranked job (caller passes that job).
+    - Rewrite the Professional Summary.
+    - Modify exactly 2 experience bullet points (from profile, tailored to the job).
+    - Highlight aligned skills.
+    - Do NOT regenerate the entire resume; only summary + 2 bullets are modified.
     """
     tailor = ResumeTailor(use_openai=use_openai)
     result = tailor.tailor_resume(profile, ranked_job.job)
 
-    # For the assignment deliverable: rewritten summary + exactly two bullets
     summary = result.summary.strip()
-
-    # Use matched skills from RankedJob to ground the bullets
-    key_skills = [s for s in ranked_job.matched_skills][:3]
+    aligned_skills = list(ranked_job.matched_skills)[:10]
+    key_skills = aligned_skills[:3]
     skill_phrase = ", ".join(key_skills) if key_skills else "core AI/ML skills"
 
-    bullet_1 = f"Led end-to-end delivery of AI/ML features using {skill_phrase}, aligned with the target role."
-    bullet_2 = "Improved model and data pipeline performance in environments similar to the selected job."
+    # Exactly 2 modified experience bullets: base on profile experience, tailor to job
+    two_bullets = _get_two_modified_bullets(profile, ranked_job, skill_phrase)
 
     formatted = [
         "=== Rewritten Professional Summary ===",
         summary,
         "",
-        "=== Modified Experience Bullet Points (2) ===",
-        f"- {bullet_1}",
-        f"- {bullet_2}",
+        "=== Highlight Aligned Skills ===",
+        ", ".join(aligned_skills) if aligned_skills else "—",
+        "",
+        "=== Modified Experience Bullet Points (exactly 2) ===",
+        f"- {two_bullets[0]}",
+        f"- {two_bullets[1]}",
+        "",
+        "(Rest of resume unchanged; only summary and these 2 bullets were modified.)",
     ]
     return "\n".join(formatted)
+
+
+def get_two_modified_bullets(
+    profile: UserProfile,
+    job: "Job",
+    matched_skills: List[str],
+) -> List[str]:
+    """Produce exactly 2 experience bullet points modified for the job (from profile experience).
+
+    Used by both assignment_agent and the main API so resume tailoring is consistent app-wide.
+    """
+    job_position = getattr(job, "position", None) or ""
+    keywords = set(s.lower() for s in matched_skills)
+    skill_phrase = ", ".join(matched_skills[:3]) if matched_skills else "core AI/ML skills"
+    scored: List[tuple[int, str]] = []
+    for exp in profile.experience:
+        for h in exp.get("highlights", []):
+            if not h.strip():
+                continue
+            h_lower = h.lower()
+            relevance = sum(1 for kw in keywords if kw in h_lower)
+            scored.append((relevance, h.strip()))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    bullets_from_profile = [h for _, h in scored]
+    if len(bullets_from_profile) >= 2:
+        b1, b2 = bullets_from_profile[0], bullets_from_profile[1]
+        if not any(b1.lower().startswith(v.lower()) for v in ("Led", "Developed", "Implemented", "Built", "Designed")):
+            b1 = "Led " + b1[0].lower() + b1[1:] if len(b1) > 1 else "Led " + b1
+        if not any(b2.lower().startswith(v.lower()) for v in ("Improved", "Delivered", "Scaled", "Reduced", "Increased")):
+            b2 = "Improved " + b2[0].lower() + b2[1:] if len(b2) > 1 else "Improved " + b2
+        return [b1, b2]
+    if len(bullets_from_profile) == 1:
+        b1 = bullets_from_profile[0]
+        if not any(b1.lower().startswith(v.lower()) for v in ("Led", "Developed", "Implemented")):
+            b1 = "Led " + b1[0].lower() + b1[1:] if len(b1) > 1 else "Led " + b1
+        return [b1, f"Applied {skill_phrase} to deliver outcomes aligned with {job_position or 'target role'}."]
+    return [
+        f"Led delivery of AI/ML solutions using {skill_phrase}, aligned with the target role.",
+        f"Improved model and pipeline performance; experience relevant to {job_position or 'this position'}.",
+    ]
+
+
+def _get_two_modified_bullets(profile: UserProfile, ranked_job: RankedJob, skill_phrase: str) -> List[str]:
+    """Produce exactly 2 experience bullet points modified for the job (from profile experience)."""
+    return get_two_modified_bullets(profile, ranked_job.job, list(ranked_job.matched_skills))
 
 
 # ------------------------------ Agent Orchestration ----------------------------- #
@@ -285,13 +361,74 @@ def print_llm_reasoning_trace(profile: UserProfile, jobs: List[CsvJob]) -> None:
         print("=== End of LLM Reasoning Trace ===\n")
 
 
+def run_agent_llm_driven(profile: UserProfile, jobs: List[CsvJob], use_openai: bool = False) -> bool:
+    """
+    Run the agent with LLM decision-making: the model decides which tool to call and in what order
+    (assignment: avoid hard-coded scripts without LLM decision-making).
+    Returns True if the LLM completed the workflow via tool calls; False to fall back to fixed pipeline.
+    """
+    profile_summary = (
+        f"Title: {profile.title}, Years: {profile.years_experience}, "
+        f"Skills: {', '.join(profile.get_all_skills()[:12])}, "
+        f"Locations: {', '.join(profile.preferred_locations) or 'Any'}."
+    )
+    state: dict = {"filtered": None, "ranked": None, "tailored": None}
+
+    def execute_tool(tool_name: str, arguments: dict) -> str:
+        if tool_name == "filtering_tool":
+            state["filtered"] = filtering_tool(jobs, profile)
+            return f"Filtered to {len(state['filtered'])} jobs."
+        if tool_name == "ranking_tool":
+            if not state.get("filtered"):
+                return "Error: call filtering_tool first."
+            top_n = arguments.get("top_n", 10)
+            state["ranked"] = ranking_tool(state["filtered"], profile, top_n=top_n)
+            top3 = state["ranked"][:3]
+            return f"Ranked {len(state['ranked'])} jobs. Top 3: " + "; ".join(
+                f"{rj.job.position} at {rj.job.company} ({rj.score}%)" for rj in top3
+            )
+        if tool_name == "resume_tailoring_tool":
+            if not state.get("ranked"):
+                return "Error: call ranking_tool first."
+            idx = max(0, int(arguments.get("job_rank", 1)) - 1)
+            best = state["ranked"][idx]
+            state["tailored"] = resume_tailoring_tool(profile, best, use_openai=use_openai)
+            return f"Tailored resume generated for {best.job.position} at {best.job.company}."
+        return "Unknown tool."
+
+    reasoning, success = run_llm_tool_agent(
+        profile_summary=profile_summary,
+        job_count=len(jobs),
+        execute_tool=execute_tool,
+    )
+    print("\n=== LLM Reasoning Trace (tool decisions) ===")
+    print(reasoning.strip())
+    print("=== End of LLM Reasoning Trace ===\n")
+    if success and state.get("ranked") and state.get("tailored") is not None:
+        ranked = state["ranked"]
+        print("Top matches (ranked list):")
+        for i, rj in enumerate(ranked, start=1):
+            print(f"{i}. {rj.job.position} at {rj.job.company} [{rj.score}%] – {rj.job.location}")
+        print("\nTop 3 jobs by score:")
+        for i, rj in enumerate(ranked[:3], start=1):
+            print(f"#{i}: {rj.job.position} at {rj.job.company} [{rj.score}%] – {rj.job.location}")
+        print("\n[Resume Tailoring Tool output]\n")
+        print(state["tailored"])
+        return True
+    return False
+
+
 def run_agent(profile: UserProfile, use_openai: bool = False) -> None:
-    """Run the full assignment pipeline end-to-end."""
+    """Run the full assignment pipeline. Uses LLM-driven tool calling when OpenAI is available."""
     print("Loading CSV jobs from data/jobs_dataset.csv ...")
     jobs = load_jobs_from_csv()
     print(f"Loaded {len(jobs)} jobs from CSV.")
 
-    # Step 0: ask LLM (if available) to explain which tools it will use.
+    if os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"):
+        if run_agent_llm_driven(profile, jobs, use_openai=use_openai):
+            return
+        print("(Falling back to fixed pipeline after LLM agent did not complete.)\n")
+
     print_llm_reasoning_trace(profile, jobs)
 
     print("\n[1] Filtering Tool: applying rule-based filters...")
@@ -308,14 +445,12 @@ def run_agent(profile: UserProfile, use_openai: bool = False) -> None:
     for i, rj in enumerate(ranked, start=1):
         print(f"{i}. {rj.job.position} at {rj.job.company} [{rj.score}%] – {rj.job.location}")
 
-    # Explicitly highlight Top 3 jobs for the assignment
     print("\nTop 3 jobs by score:")
     for i, rj in enumerate(ranked[:3], start=1):
         print(f"#{i}: {rj.job.position} at {rj.job.company} [{rj.score}%] – {rj.job.location}")
 
-    # Simple autonomy: pick the best job automatically
     best = ranked[0]
-    print("\n[3] Agent decision: selecting best job automatically:")
+    print("\n[3] Agent decision: selecting best job:")
     print(f"Chosen: {best.job.position} at {best.job.company} ({best.score}% match)")
     print(f"URL: {best.job.job_url}")
 
