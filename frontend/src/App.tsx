@@ -145,7 +145,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-stone-900 dark:text-white tracking-tight">Career Match</h1>
-                <p className="text-xs text-stone-500 dark:text-gray-400 hidden sm:block">Middle America AI jobs · Tailored applications</p>
+                <p className="text-xs text-stone-500 dark:text-gray-400 hidden sm:block">AI jobs · Tailored applications</p>
               </div>
             </div>
             
@@ -250,7 +250,7 @@ function App() {
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-stone-900 dark:text-white mb-2 tracking-tight">
-                  Find Middle America AI Jobs
+                  Find AI Jobs
                 </h2>
                 <p className="text-stone-600 dark:text-gray-400 max-w-md mx-auto mb-6">
                   Search LinkedIn, Indeed & Greenhouse. Filter out big tech, rank by fit, get tailored resumes.

@@ -15,7 +15,7 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
   isGenerating 
 }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const { job, score, skill_match, title_match, location_match, matched_skills, missing_skills, match_reasons } = rankedJob;
+  const { job, score, skill_match, title_match, location_match, matched_skills = [], missing_skills = [], match_reasons = [] } = rankedJob;
 
   const getScoreColor = (s: number) => {
     if (s >= 70) return 'text-green-600 dark:text-green-400';
@@ -107,13 +107,13 @@ export const RankedJobCard: React.FC<RankedJobCardProps> = ({
             </div>
           </div>
 
-          {matched_skills.length > 0 && (
+          {matched_skills.filter(s => s && s.trim()).length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Matched Skills:</p>
               <div className="flex flex-wrap gap-1">
-                {matched_skills.map((skill, i) => (
+                {matched_skills.filter(s => s && s.trim()).map((skill, i) => (
                   <span key={i} className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded">
-                    {skill}
+                    {skill.trim()}
                   </span>
                 ))}
               </div>

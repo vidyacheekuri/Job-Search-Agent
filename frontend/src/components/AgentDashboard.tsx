@@ -77,7 +77,7 @@ export const AgentDashboard: React.FC = () => {
     setError(null);
     try {
       if (agentMode === 'live') {
-        const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, 50, 20);
+        const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, 75, 20);
         setRankedJobs(result.jobs);
         setOfflineReasoning(result.reasoning ?? null);
       } else {

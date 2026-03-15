@@ -1281,6 +1281,8 @@ async def run_offline_agent(
             ranked = _rank_csv_jobs(jobs, profile, top_n=3)
         if not ranked:
             raise HTTPException(status_code=400, detail="No jobs in the dataset")
+        if len(ranked) < 3 and len(jobs) >= 3:
+            ranked = _rank_csv_jobs(jobs, profile, top_n=3)
         best_ranked = ranked[0]
         tailored_resume = _tailor_resume_offline(profile, best_ranked, use_openai=use_openai)
 
