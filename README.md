@@ -1,218 +1,149 @@
 # Job Search Agent
 
-An autonomous AI agent for searching **AI Engineer jobs at mid-sized "Middle America" companies** (not big tech or startups). The agent filters out FAANG+, excludes startups, ranks jobs by profile match, and generates tailored application materials.
+A simple app that helps you find AI/ML jobs, see how well they match your profile, and get a tailored resume for the best match. No API keys needed to run it.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![React](https://img.shields.io/badge/React-18-61DAFB.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)
+---
 
-## Quick Start
+## What You Need First
+
+- **Python 3.10 or newer** — [Download](https://www.python.org/downloads/)
+- **Node.js 18 or newer** — [Download](https://nodejs.org/)
+- A terminal (Terminal on Mac, Command Prompt or PowerShell on Windows)
+
+---
+
+## How to Run the App (Step by Step)
+
+### 1. Open the project folder
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/vidyacheekuri/Job-Search-Agent.git
 cd Job-Search-Agent
-pip install -r requirements.txt
-
-# 2. Install frontend
-cd frontend && npm install && cd ..
-
-# 3. Start backend (Terminal 1)
-python api/main.py
-
-# 4. Start frontend (Terminal 2)
-cd frontend && npm run dev
-
-# 5. Open http://localhost:5173 in your browser
 ```
 
-**No API keys required!** The app works offline with heuristic-based AI. Optionally set `OPENAI_API_KEY` for enhanced generation.
+*(If you just cloned the repo, you're already in the right place.)*
 
----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Multi-Source Search** | LinkedIn, Indeed, and Greenhouse |
-| **FAANG+ Blacklist** | Exclude 40+ big tech companies |
-| **Startup Filter** | Exclude startups (<50 employees heuristic) |
-| **Location Filter** | Iowa, Texas, Remote, etc. |
-| **AI-Powered Ranking** | Score jobs by skill, title, location, recency |
-| **Resume Tailoring** | Customized resumes per job |
-| **Cover Letter Generation** | AI-generated cover letters |
-| **ATS Optimization** | Resume compatibility scoring |
-| **Hiring Simulation** | Mock recruiter evaluation |
-| **LLM Reasoning & Trace** | Optional LLM explains filtering → ranking → tailoring |
-| **Offline CSV Agent** | Static CSV dataset + same workflow for assignment use |
-
----
-
-## Pipeline
-
-```
-Search → Filter FAANG → Filter Startups → Filter Location → Rank Top 10 → Tailor Top 3
-```
-
-1. **Search** job boards; extract title, company, location, skills, salary, URL  
-2. **Filter** FAANG+ blacklist; exclude startups  
-3. **Rank** top 10 by skill match, location preference, recency  
-4. **Tailor** customized resumes + cover letters for top 3 jobs  
-
----
-
-## Installation
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- pip, npm
-
-### Setup
+### 2. Install Python packages
 
 ```bash
-# Python dependencies
 pip install -r requirements.txt
-
-# Or with Conda
-conda env create -f environment.yml
-conda activate job-search-agent
-
-# Frontend
-cd frontend && npm install
 ```
 
-### Optional: CLI
+If that fails, try:
+
 ```bash
-pip install -e .
+pip3 install -r requirements.txt
 ```
 
----
+### 3. Install frontend packages
 
-## Usage
+```bash
+cd frontend
+npm install
+cd ..
+```
 
-### Web Interface
+### 4. Start the backend (keep this window open)
 
-**Terminal 1:**
+Open a terminal and run:
+
 ```bash
 python api/main.py
 ```
 
-**Terminal 2:**
+You should see something like: `Uvicorn running on http://0.0.0.0:8000`. Leave this terminal open.
+
+### 5. Start the frontend (use a second terminal)
+
+Open a **new** terminal, go to the project folder, then run:
+
 ```bash
-cd frontend && npm run dev
+cd frontend
+npm run dev
 ```
 
-Open **http://localhost:5173**
+You should see a local URL, usually: `http://localhost:5173`
 
-### AI Agent Tab
-1. Create profile (form, PDF upload, or paste text)
-2. Search & rank jobs (Live Web or Offline CSV dataset)
-3. Generate tailored resumes and cover letters
-4. Run evaluation (benchmark-based, ~5 sec)
+### 6. Open the app in your browser
 
-### API Endpoints
+In your browser, go to: **http://localhost:5173**
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/search` | Search LinkedIn jobs |
-| GET | `/api/search/multi` | Multi-source search |
-| POST | `/api/profile` | Create profile |
-| POST | `/api/profile/upload-pdf` | Upload PDF resume |
-| POST | `/api/search/ranked` | Search and rank by profile |
-| POST | `/api/tailor/resume` | Generate tailored resume |
-| POST | `/api/generate/cover-letter` | Generate cover letter |
-| POST | `/api/evaluate` | Hiring simulation |
-| POST | `/api/agent/offline` | Offline CSV agent (filter → rank → tailor) |
+You should see the Job Search Agent page. Create a profile, then search and rank jobs.
 
 ---
 
-## Project Structure
+## What This App Does
 
-```
-Job-Search-Agent/
-├── linkedin_scraper/       # Core package
-│   ├── scraper.py          # LinkedIn scraping
-│   ├── indeed_scraper.py
-│   ├── greenhouse_scraper.py
-│   └── agent/              # AI agent
-│       ├── profile.py
-│       ├── ranker.py
-│       ├── resume_tailor.py
-│       ├── cover_letter.py
-│       ├── agent.py
-│       └── evaluation.py
-├── api/main.py             # FastAPI backend
-├── frontend/               # React app
-├── data/
-│   ├── sample_resume.json
-│   └── benchmark_jobs.json
-├── docs/
-└── scripts/
-```
+- **Search jobs** — From the web (LinkedIn, etc.) or from a built-in list of 20–30 AI/ML jobs in a CSV file.
+- **Filter jobs** — By location, experience, and company (e.g. skip big tech if you want).
+- **Rank jobs** — Shows a score for each job based on how well it fits your profile.
+- **Tailor your resume** — Rewrites your summary and two bullet points for the top job and highlights matching skills.
+- **Cover letters** — Can generate a cover letter for a job.
 
 ---
 
-## Tech Stack
+## Running Only the Assignment Script (No Web UI)
 
-| Layer | Technology |
-|-------|------------|
-| Scraping | Python, BeautifulSoup, Requests |
-| AI | Heuristic + optional LLMs (OpenAI / Claude / Ollama) for reasoning & resume summary |
-| Backend | FastAPI, Uvicorn, Pydantic |
-| Frontend | React, TypeScript, Vite, Tailwind CSS |
-| PDF | PyPDF2 |
+If you just want to run the assignment pipeline (CSV jobs → filter → rank → tailor) from the command line:
 
----
-
-## Troubleshooting
-
-**"Could not connect to the server"**  
-- Ensure `python api/main.py` is running  
-- Check port 8000 is free  
-
-**"Module not found"**  
 ```bash
-pip install -r requirements.txt
+python assignment_agent.py
 ```
 
-**"npm: command not found"**  
-- Install Node.js from https://nodejs.org/
+Make sure you're in the `Job-Search-Agent` folder. The script reads jobs from `data/jobs_dataset.csv` and prints the ranked list and tailored resume.
 
-**Jobs not loading**  
-- LinkedIn may rate-limit; wait and retry  
-- Reduce result limit  
+**Optional:** For the AI to *choose* which step to do next (instead of a fixed order), set one of these before running:
 
----
+- `OPENAI_API_KEY=your-key-here`
+- or `ANTHROPIC_API_KEY=your-key-here`
 
-## Assignment / Offline CSV Agent
-
-- **Dataset**: `data/jobs_dataset.csv` (Job Title, Company, Location, Required Skills, Years of Experience, Shortened Description, URL).
-- **Script**: `assignment_agent.py` — load CSV, run filtering_tool → ranking_tool → resume_tailoring_tool, print ranked list and tailored resume for top job.
-- **API**: `POST /api/agent/offline` — same workflow; used when you choose **Data Source: Offline CSV Dataset** in the AI Agent tab.
-
-### Filtering Tool rules (for report)
-
-The Filtering Tool implements: **(1) Location preference** — keep jobs matching `profile.preferred_locations`; **(2) Experience limit** — keep only if `profile.years_experience >=` job’s required years; **(3) Company exclusion** — exclude FAANG etc. (see `EXCLUDED_COMPANIES`); **(4) Remote-only (optional)** — when `profile.remote_preference == "remote"`, keep only jobs with `"remote"` in location. Rules are documented in **`docs/FILTERING_RULES.md`** for use in your report.
-
-### Ranking Tool (for report)
-
-The Ranking Tool: assigns **scores based on skill matching**; considers **experience alignment** and **location match** (optional); outputs a **ranked list with clear scores** (0–100). The UI and script **clearly display** the **ranked job list with scores** and **Top 3 jobs**. See **`docs/RANKING_SYSTEM.md`** for the report.
-
-### Resume Tailoring (for report)
-
-The agent **tailors the resume for only the top-ranked job**. It **rewrites the Professional Summary**; **modifies exactly 2 experience bullet points** (from the profile, tailored to the job); **highlights aligned skills**; and **does not regenerate the entire resume**. These behaviors are implemented **app-wide** (live search, agent run, middle-America, and offline CSV). See **`docs/RESUME_TAILORING_REQUIREMENTS.md`** for the report.
-
-### LLM Reasoning & Trace
-
-The agent can use an LLM to explain its workflow (which tools, in what order). This reasoning is returned by `/api/agent/offline`, `/api/search/ranked`, `/api/agent/run`, and `/api/agent/middle-america`, and shown in the UI as **“LLM Reasoning & Trace”**.
-
-### LLM Providers
-
-Set `LLM_PROVIDER` to `openai`, `anthropic`, or `ollama`. If unset, the app uses OpenAI if `OPENAI_API_KEY` is set, else Anthropic if `ANTHROPIC_API_KEY` is set, else Ollama. Optional: `OLLAMA_MODEL` (default `llama3`). The same provider is used for reasoning traces and for resume summary generation in the tailor.
+You can put them in a `.env` file in the project root, or type them in the terminal (e.g. `export OPENAI_API_KEY=sk-...` on Mac/Linux).
 
 ---
 
-## Disclaimer
+## Common Problems
 
-Use responsibly. Respect LinkedIn's Terms of Service. Don't make excessive requests. Use for personal job searching only. Review all AI-generated content before submitting.
+| Problem | What to do |
+|--------|------------|
+| **"Could not connect to the server"** | Start the backend first: `python api/main.py` in the project folder. Keep that terminal open. |
+| **"Module not found"** | Run `pip install -r requirements.txt` (or `pip3 install -r requirements.txt`) in the project folder. |
+| **"npm: command not found"** | Install Node.js from https://nodejs.org/ and try again. |
+| **"Port already in use"** | Something else is using port 8000 or 5173. Close that app or use a different port. |
+| **Jobs don't load** | If using live search, the job site may be slow or limiting requests. Try again later or use "Offline CSV Dataset" in the app. |
+
+---
+
+## Project Folders (Quick Reference)
+
+| Folder / File | What it is |
+|---------------|------------|
+| `api/main.py` | Backend server — run this first. |
+| `frontend/` | Web interface — run `npm run dev` from here. |
+| `data/jobs_dataset.csv` | List of 20–30 AI/ML jobs used by the offline/assignment flow. |
+| `assignment_agent.py` | Script to run filter → rank → tailor from the command line. |
+| `docs/` | Extra docs (filtering rules, ranking, report template). |
+
+---
+
+## Optional: API Keys for Smarter AI
+
+The app works **without** any API keys. If you want better resume and reasoning quality:
+
+- **OpenAI:** Create a key at [platform.openai.com](https://platform.openai.com/), then set `OPENAI_API_KEY` in a `.env` file or in your terminal.
+- **Claude:** Set `ANTHROPIC_API_KEY` the same way.
+- **Ollama (local):** Install [Ollama](https://ollama.ai), run a model (e.g. `llama3`), and set `LLM_PROVIDER=ollama` if you want to use it.
+
+---
+
+## Report and Assignment Docs
+
+- **Report template (3–4 pages):** `docs/ASSIGNMENT_REPORT.md` — fill in Top 3 jobs, resume snippet, and ethics reflection.
+- **Filtering rules:** `docs/FILTERING_RULES.md`
+- **Ranking system:** `docs/RANKING_SYSTEM.md`
+- **Resume tailoring:** `docs/RESUME_TAILORING_REQUIREMENTS.md`
+- **Checklist:** `docs/ASSIGNMENT_CHECKLIST.md`
+
+---
+
+## Use Responsibly
+
+Use for personal job searching only. Don’t overload job sites with requests. Always review AI-generated resumes and cover letters before sending.
