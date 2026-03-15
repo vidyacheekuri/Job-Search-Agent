@@ -39,6 +39,7 @@ cd ..
 **4. Start the backend with Ollama** (leave this terminal open)
 
 ```bash
+cd "/Users/adithyareddy/Documents/AI Projects/Job-Search-Agent" ## Add yout file path here
 LLM_PROVIDER=ollama python api/main.py
 ```
 
@@ -47,8 +48,9 @@ You should see something like: `Uvicorn running on http://0.0.0.0:8000`
 **5. Start the frontend** (open a **new** terminal)
 
 ```bash
-cd Job-Search-Agent/frontend
+cd "/Users/adithyareddy/Documents/AI Projects/Job-Search-Agent/frontend"  ## Add yout file path here
 npm run dev
+
 ```
 
 You should see a local URL, usually: `http://localhost:5173`
