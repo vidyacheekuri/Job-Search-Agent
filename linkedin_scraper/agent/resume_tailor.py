@@ -208,7 +208,7 @@ Write a compelling, ATS-friendly summary that highlights relevant experience and
                 import json
                 import requests
                 payload = {
-                    "model": os.getenv("OLLAMA_MODEL", "llama3"),
+                    "model": os.getenv("OLLAMA_MODEL", "llama3.2"),
                     "messages": [{"role": "user", "content": prompt}],
                     "stream": False,
                 }

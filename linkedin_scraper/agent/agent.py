@@ -245,7 +245,6 @@ class JobSearchAgent:
     def filter_jobs(
         self,
         jobs: Optional[list[Job]] = None,
-        company_size: str = "mid",
         require_salary: bool = False,
         exclude_companies: Optional[list[str]] = None,
     ) -> list[Job]:
@@ -254,7 +253,6 @@ class JobSearchAgent:
         
         Args:
             jobs: Jobs to filter (uses search results if not provided).
-            company_size: "small", "mid", or "large".
             require_salary: Only include jobs with salary info.
             exclude_companies: Companies to exclude.
             
@@ -262,8 +260,7 @@ class JobSearchAgent:
             Filtered list of jobs.
         """
         jobs = jobs or self._search_results
-        
-        filtered = JobRanker.filter_by_company_size(jobs, company_size)
+        filtered = list(jobs)
         
         if require_salary:
             filtered = [j for j in filtered if j.salary]
@@ -335,8 +332,6 @@ class JobSearchAgent:
                         log.get("action") == "INCLUDED",
                         log.get("reason", ""),
                     )
-        
-        jobs = JobRanker.filter_by_company_size(jobs, "mid")
         
         self._filtered_results = jobs
         return jobs, all_logs
@@ -431,7 +426,6 @@ class JobSearchAgent:
         self,
         keyword: str = "AI Engineer",
         location: str = "",
-        company_size: str = "mid",
         limit: int = 50,
         top_n_applications: int = 5,
         output_dir: Optional[str] = None,
@@ -442,7 +436,6 @@ class JobSearchAgent:
         Args:
             keyword: Search keyword.
             location: Search location.
-            company_size: Target company size.
             limit: Max search results.
             top_n_applications: Number of applications to generate.
             output_dir: Directory to save outputs.
@@ -457,8 +450,7 @@ class JobSearchAgent:
         jobs = self.search(keyword=keyword, location=location, limit=limit)
         print(f"   Found {len(jobs)} jobs")
         
-        print(f"🏢 Filtering for {company_size}-sized companies...")
-        filtered = self.filter_jobs(company_size=company_size)
+        filtered = self.filter_jobs()
         print(f"   {len(filtered)} jobs after filtering")
         
         print("📊 Ranking jobs by profile match...")

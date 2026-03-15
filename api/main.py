@@ -267,7 +267,6 @@ async def search_jobs(
     sort_by: str = Query("relevant", description="recent or relevant"),
     easy_apply: bool = Query(False, description="Filter to Easy Apply only"),
     under_10_applicants: bool = Query(False, description="Filter to jobs with <10 applicants"),
-    company_size: Optional[str] = Query(None, description="small, mid, or large"),
     limit: int = Query(25, ge=1, le=100, description="Max results (1-100)"),
     details: bool = Query(False, description="Fetch full job descriptions"),
 ):
@@ -293,9 +292,6 @@ async def search_jobs(
         limit=limit,
     )
 
-    if company_size:
-        jobs = JobRanker.filter_by_company_size(jobs, company_size)
-
     if details:
         for job in jobs:
             scraper.fetch_job_details(job)
@@ -320,7 +316,6 @@ async def search_jobs_multi_source(
     salary: Optional[str] = Query(None, description="Minimum salary"),
     sort_by: str = Query("relevant", description="recent or relevant"),
     easy_apply: bool = Query(False, description="Filter to Easy Apply only (LinkedIn)"),
-    company_size: Optional[str] = Query(None, description="small, mid, or large"),
     limit: int = Query(25, ge=1, le=100, description="Max results per source (1-100)"),
     details: bool = Query(False, description="Fetch full job descriptions"),
 ):
@@ -355,9 +350,6 @@ async def search_jobs_multi_source(
     jobs_by_source = {}
     
     for source, jobs in results.items():
-        if company_size:
-            jobs = JobRanker.filter_by_company_size(jobs, company_size)
-        
         jobs_by_source[source] = len(jobs)
         
         for job in jobs:
@@ -496,7 +488,6 @@ async def search_and_rank_jobs(
     keyword: str = Query(..., description="Job title or keywords"),
     location: str = Query("", description="Location"),
     profile_id: str = Query(..., description="Profile ID to rank against"),
-    company_size: str = Query("mid", description="Company size filter"),
     limit: int = Query(25, ge=1, le=100),
     top_n: int = Query(10, ge=1, le=50, description="Number of top matches to return"),
 ):
@@ -510,7 +501,6 @@ async def search_and_rank_jobs(
     
     jobs = scraper.search(keyword=keyword, location=location, limit=limit)
     
-    jobs = JobRanker.filter_by_company_size(jobs, company_size)
     jobs = _filter_live_jobs(jobs, profile)  # Assignment-style: company exclusion + location preference
 
     ranker = JobRanker(profile)
@@ -701,7 +691,6 @@ async def run_agent_pipeline(
     profile_id: str = Query(..., description="Profile ID"),
     keyword: str = Query("AI Engineer", description="Search keyword"),
     location: str = Query("", description="Location"),
-    company_size: str = Query("mid", description="Company size"),
     limit: int = Query(50, description="Search limit"),
     top_n: int = Query(5, description="Number of applications to generate"),
     use_openai: bool = Query(False, description="Use OpenAI"),
@@ -717,7 +706,6 @@ async def run_agent_pipeline(
     report = agent.run_full_pipeline(
         keyword=keyword,
         location=location,
-        company_size=company_size,
         limit=limit,
         top_n_applications=top_n,
     )
@@ -933,6 +921,30 @@ def _load_csv_jobs() -> list[CsvJobModel]:
 # Company exclusion for filtering (e.g. FAANG) – used for both live and CSV
 _EXCLUDED_COMPANIES = {"meta", "facebook", "amazon", "apple", "netflix", "google", "alphabet"}
 
+def _apply_offline_search_filters(
+    jobs: list[CsvJobModel],
+    keyword: str = "",
+    location: str = "",
+) -> list[CsvJobModel]:
+    """Filter CSV jobs by search keyword and location (before profile-based filtering)."""
+    if not jobs:
+        return jobs
+    result = jobs
+    keyword = (keyword or "").strip().lower()
+    location = (location or "").strip().lower()
+
+    if keyword:
+        out = []
+        for j in result:
+            text = f"{j.title} {j.company} {j.location} {j.required_skills} {j.description}".lower()
+            if keyword in text:
+                out.append(j)
+        result = out if out else result
+    if location:
+        out = [j for j in result if location in (j.location or "").lower()]
+        result = out if out else result
+    return result
+
 
 def _filter_live_jobs(jobs: list, profile: UserProfile) -> list:
     """Apply assignment-style filtering to live scraped jobs: company exclusion, location preference."""
@@ -1057,7 +1069,7 @@ def _llm_reasoning_trace_generic(profile: UserProfile, job_count: int = 0, sourc
             f"- Skills: {', '.join(profile.get_all_skills())}\n"
             f"- Preferred locations: {', '.join(profile.preferred_locations) or 'not specified'}\n"
             "The agent will search LinkedIn (and optionally other sources) for jobs, then apply filtering "
-            "(location, experience, company size), then rank jobs by skill and experience match, then select "
+            "(location, experience), then rank jobs by skill and experience match, then select "
             "the best job and tailor the resume (summary + 2 bullets). Explain which tools are used and in what order, and why."
         )
     reasoning: Optional[str] = None
@@ -1105,7 +1117,7 @@ def _llm_reasoning_trace_generic(profile: UserProfile, job_count: int = 0, sourc
                 pass
             else:
                 payload = {
-                    "model": os.environ.get("OLLAMA_MODEL", "llama3"),
+                    "model": os.environ.get("OLLAMA_MODEL", "llama3.2"),
                     "messages": [
                         {"role": "system", "content": system_msg},
                         {"role": "user", "content": user_msg},
@@ -1170,7 +1182,7 @@ async def evaluate_applications(
         # Full pipeline: live LinkedIn search (slow - 2-5 min)
         agent = JobSearchAgent(profile, use_openai=False)
         agent.search(keyword=keyword, limit=30)
-        agent.filter_jobs(company_size="mid")
+        agent.filter_jobs()
         agent.rank_jobs(fetch_details=False)
         applications = agent.generate_applications(top_n=num_applications)
     
@@ -1206,21 +1218,23 @@ async def run_offline_agent(
     profile_id: str = Query(..., description="Profile ID"),
     top_n: int = Query(10, ge=1, le=50, description="Number of top matches to return"),
     use_openai: bool = Query(False, description="Use OpenAI/LLM for resume tailoring"),
+    keyword: str = Query("", description="Search keyword (job title, company, description, skills)"),
+    location: str = Query("", description="Location filter (e.g. Remote, California)"),
 ):
     """
     Run the offline CSV-based assignment agent.
 
-    This uses data/jobs_dataset.csv instead of live scraping and runs:
-      1) Filtering Tool over CSV rows
-      2) Ranking Tool using JobRanker
-      3) Resume Tailoring Tool for the best job
-      4) Optional LLM reasoning & trace (OpenAI / Claude / Ollama)
+    Optional search filters: keyword, location (applied to CSV before profile filtering).
+    Then: Filtering Tool → Ranking Tool → Resume Tailoring Tool for the best job.
     """
     if profile_id not in profile_store:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     profile = profile_store[profile_id]
-    jobs = _load_csv_jobs()
+    all_jobs = _load_csv_jobs()
+    jobs = _apply_offline_search_filters(all_jobs, keyword=keyword, location=location)
+    if not jobs:
+        jobs = all_jobs
 
     profile_summary = (
         f"Title: {profile.title}, Years: {profile.years_experience}, "
@@ -1236,7 +1250,7 @@ async def run_offline_agent(
         if tool_name == "ranking_tool":
             if not state.get("filtered"):
                 return "Error: call filtering_tool first."
-            top_n = arguments.get("top_n", 10)
+            top_n = min(int(arguments.get("top_n", 3)), 3)
             state["ranked"] = _rank_csv_jobs(state["filtered"], profile, top_n=top_n)
             top3 = state["ranked"][:3]
             return f"Ranked {len(state['ranked'])} jobs. Top 3: " + "; ".join(f"{rj.job.position} at {rj.job.company} ({rj.score}%)" for rj in top3)
@@ -1261,13 +1275,16 @@ async def run_offline_agent(
     else:
         filtered = _filter_csv_jobs(jobs, profile)
         if not filtered:
-            raise HTTPException(status_code=400, detail="No jobs remained after filtering")
-        ranked = _rank_csv_jobs(filtered, profile, top_n=top_n)
+            filtered = jobs
+        ranked = _rank_csv_jobs(filtered, profile, top_n=3)
         if not ranked:
-            raise HTTPException(status_code=400, detail="No jobs remained after ranking")
+            ranked = _rank_csv_jobs(jobs, profile, top_n=3)
+        if not ranked:
+            raise HTTPException(status_code=400, detail="No jobs in the dataset")
         best_ranked = ranked[0]
         tailored_resume = _tailor_resume_offline(profile, best_ranked, use_openai=use_openai)
 
+    ranked = ranked[:3]
     ranked_responses = [ranked_job_to_response(rj) for rj in ranked]
     best_index = 0
 

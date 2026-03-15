@@ -276,7 +276,7 @@ def _run_single_reasoning(system_msg: str, user_msg: str, provider: str) -> str:
     except ImportError:
         return "Ollama not available."
     payload = {
-        "model": os.environ.get("OLLAMA_MODEL", "llama3"),
+        "model": os.environ.get("OLLAMA_MODEL", "llama3.2"),
         "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": user_msg}],
         "stream": False,
     }

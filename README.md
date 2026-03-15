@@ -67,6 +67,7 @@ Candidate Profile
      • Experience years limit
      • Skills overlap check
      • Optional remote-only filter
+     (No company-size filter; all company sizes are included.)
       │
       ▼
  [2] Ranking Tool

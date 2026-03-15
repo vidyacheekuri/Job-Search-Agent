@@ -48,6 +48,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   const [skillInput, setSkillInput] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [targetRolesStr, setTargetRolesStr] = useState(() => (initialProfile?.target_roles ?? defaultProfile.target_roles)?.join(', ') ?? '');
+  const [preferredLocationsStr, setPreferredLocationsStr] = useState(() => (initialProfile?.preferred_locations ?? defaultProfile.preferred_locations)?.join(', ') ?? '');
 
   const updateField = <K extends keyof UserProfile>(field: K, value: UserProfile[K]) => {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -88,7 +90,9 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(profile);
+    const target_roles = targetRolesStr.split(',').map(s => s.trim()).filter(Boolean);
+    const preferred_locations = preferredLocationsStr.split(',').map(s => s.trim()).filter(Boolean);
+    onSubmit({ ...profile, target_roles, preferred_locations });
   };
 
   const handlePasteResume = () => {
@@ -325,10 +329,13 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               <label className={labelClass}>Years of Experience</label>
               <input
                 type="number"
-                value={profile.years_experience}
-                onChange={(e) => updateField('years_experience', parseInt(e.target.value) || 0)}
-                min={0}
-                max={50}
+                value={profile.years_experience === 0 ? '' : profile.years_experience}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') updateField('years_experience', 0);
+                  else { const n = parseInt(v, 10); if (!isNaN(n) && n >= 0) updateField('years_experience', n); }
+                }}
+                placeholder="e.g. 3"
                 className={inputClass}
               />
             </div>
@@ -489,8 +496,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               <label className={labelClass}>Target Roles (comma-separated)</label>
               <input
                 type="text"
-                value={profile.target_roles.join(', ')}
-                onChange={(e) => updateField('target_roles', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                value={targetRolesStr}
+                onChange={(e) => setTargetRolesStr(e.target.value)}
                 placeholder="AI Engineer, ML Engineer"
                 className={inputClass}
               />
@@ -499,8 +506,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               <label className={labelClass}>Preferred Locations (comma-separated)</label>
               <input
                 type="text"
-                value={profile.preferred_locations.join(', ')}
-                onChange={(e) => updateField('preferred_locations', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                value={preferredLocationsStr}
+                onChange={(e) => setPreferredLocationsStr(e.target.value)}
                 placeholder="San Francisco, Remote"
                 className={inputClass}
               />

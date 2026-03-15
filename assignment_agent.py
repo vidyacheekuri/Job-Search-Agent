@@ -336,7 +336,7 @@ def print_llm_reasoning_trace(profile: UserProfile, jobs: List[CsvJob]) -> None:
                 reasoning = None
             else:
                 payload = {
-                    "model": os.environ.get("OLLAMA_MODEL", "llama3"),
+                    "model": os.environ.get("OLLAMA_MODEL", "llama3.2"),
                     "messages": [
                         {"role": "system", "content": system_msg},
                         {"role": "user", "content": user_msg},

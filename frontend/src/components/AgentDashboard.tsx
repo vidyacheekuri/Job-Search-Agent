@@ -18,7 +18,6 @@ export const AgentDashboard: React.FC = () => {
   
   const [searchKeyword, setSearchKeyword] = useState('AI Engineer');
   const [searchLocation, setSearchLocation] = useState('');
-  const [companySize, setCompanySize] = useState('mid');
   
   const [generatedResume, setGeneratedResume] = useState<TailoredResume | null>(null);
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState<CoverLetter | null>(null);
@@ -78,11 +77,11 @@ export const AgentDashboard: React.FC = () => {
     setError(null);
     try {
       if (agentMode === 'live') {
-        const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, companySize, 50, 20);
+        const result = await searchAndRankJobs(searchKeyword, searchLocation, profileId, 50, 20);
         setRankedJobs(result.jobs);
         setOfflineReasoning(result.reasoning ?? null);
       } else {
-        const result = await runOfflineAgent(profileId, 10, false);
+        const result = await runOfflineAgent(profileId, 3, false, searchKeyword, searchLocation);
         setRankedJobs(result.ranked_jobs);
         setOfflineReasoning(result.reasoning ?? null);
         // Optionally pre-load tailored resume for the best job
@@ -230,8 +229,7 @@ export const AgentDashboard: React.FC = () => {
             </div>
           )}
 
-          {agentMode === 'live' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Job Title / Keywords
@@ -240,7 +238,7 @@ export const AgentDashboard: React.FC = () => {
                 type="text"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="AI Engineer"
+                placeholder={agentMode === 'live' ? 'AI Engineer' : 'e.g. ML Engineer (optional for CSV)'}
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -252,31 +250,15 @@ export const AgentDashboard: React.FC = () => {
                 type="text"
                 value={searchLocation}
                 onChange={(e) => setSearchLocation(e.target.value)}
-                placeholder="San Francisco or Remote"
+                placeholder="e.g. Remote, California"
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Company Size
-              </label>
-              <select
-                value={companySize}
-                onChange={(e) => setCompanySize(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              >
-                <option value="">All Sizes</option>
-                <option value="small">Startups</option>
-                <option value="mid">Mid-sized</option>
-                <option value="large">Enterprise</option>
-              </select>
-            </div>
           </div>
-          )}
 
           <button
             onClick={handleSearch}
-            disabled={!searchKeyword || isLoading}
+            disabled={isLoading || (agentMode === 'live' && !searchKeyword)}
             className="w-full px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {isLoading ? (

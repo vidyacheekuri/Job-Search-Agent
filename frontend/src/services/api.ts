@@ -27,7 +27,6 @@ export async function searchJobs(filters: SearchFilters): Promise<SearchResponse
   if (filters.sortBy) params.append('sort_by', filters.sortBy);
   if (filters.easyApply) params.append('easy_apply', 'true');
   if (filters.under10Applicants) params.append('under_10_applicants', 'true');
-  if (filters.companySize) params.append('company_size', filters.companySize);
   params.append('limit', filters.limit.toString());
   if (filters.details) params.append('details', 'true');
 
@@ -55,7 +54,6 @@ export async function searchJobsMultiSource(filters: SearchFilters): Promise<Mul
   if (filters.salary) params.append('salary', filters.salary);
   if (filters.sortBy) params.append('sort_by', filters.sortBy);
   if (filters.easyApply) params.append('easy_apply', 'true');
-  if (filters.companySize) params.append('company_size', filters.companySize);
   params.append('limit', filters.limit.toString());
   if (filters.details) params.append('details', 'true');
 
@@ -149,7 +147,6 @@ export async function searchAndRankJobs(
   keyword: string,
   location: string,
   profileId: string,
-  companySize: string = 'mid',
   limit: number = 25,
   topN: number = 10,
 ): Promise<RankedSearchResponse> {
@@ -157,7 +154,6 @@ export async function searchAndRankJobs(
     keyword,
     location,
     profile_id: profileId,
-    company_size: companySize,
     limit: limit.toString(),
     top_n: topN.toString(),
   });
@@ -289,7 +285,6 @@ export async function runAgentPipeline(
   profileId: string,
   keyword: string = 'AI Engineer',
   location: string = '',
-  companySize: string = 'mid',
   limit: number = 50,
   topN: number = 5,
   useOpenAI: boolean = false,
@@ -298,7 +293,6 @@ export async function runAgentPipeline(
     profile_id: profileId,
     keyword,
     location,
-    company_size: companySize,
     limit: limit.toString(),
     top_n: topN.toString(),
     use_openai: useOpenAI.toString(),
@@ -341,12 +335,16 @@ export async function runOfflineAgent(
   profileId: string,
   topN: number = 10,
   useOpenAI: boolean = false,
+  keyword: string = '',
+  location: string = '',
 ): Promise<OfflineAgentResult> {
   const params = new URLSearchParams({
     profile_id: profileId,
     top_n: topN.toString(),
     use_openai: useOpenAI.toString(),
   });
+  if (keyword) params.set('keyword', keyword);
+  if (location) params.set('location', location);
 
   const response = await fetch(`${API_BASE}/api/agent/offline?${params}`, {
     method: 'POST',

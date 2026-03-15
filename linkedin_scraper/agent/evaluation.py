@@ -615,8 +615,15 @@ class AgentEvaluator:
         if personalization < 40:
             weaknesses.append("Generic cover letter")
         
+        job = app.ranked_job.job
+        position = getattr(job, "position", "") or ""
+        company = getattr(job, "company", "") or ""
+        if position or company:
+            application_id = f"{position} · {company}".strip(" · ") if (position and company) else (position or company)
+        else:
+            application_id = f"Application {index + 1}"
         return RecruiterFeedback(
-            application_id=f"app_{index}",
+            application_id=application_id,
             resume_score=ats_score,
             cover_letter_score=round(personalization, 1),
             interview_decision=decision,
