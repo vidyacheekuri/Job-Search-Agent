@@ -1,180 +1,89 @@
-# Job Search Agent — AI Assignment Submission
+# Job Search Agent — Career Match
 
-An LLM-based AI agent that autonomously filters, ranks, and tailors resumes for AI/ML job postings. Built for the *AI for Engineers* assignment.
+An AI-powered job search app: create a profile, search and rank AI/ML jobs (live or from a CSV dataset), and get tailored resumes and cover letters. No API keys required to run.
 
 ---
 
-## Quick Start — Assignment Grading (3 Steps)
+## What you need
 
-> **No API keys required.** The agent runs fully with local heuristics. Add an optional API key for LLM-driven tool calling (see below).
+- **Python 3.10+**
+- **Node.js 18+**
+- A terminal
 
-**Step 1 — Clone & install dependencies**
+---
+
+## Run the app (after cloning)
+
+**1. Clone and go into the project**
 
 ```bash
 git clone <repo-url>
 cd Job-Search-Agent
+```
+
+**2. Install Python dependencies**
+
+```bash
 pip install -r requirements.txt
 ```
 
-**Step 2 — Run the assignment agent**
+**3. Install frontend dependencies**
 
-```bash
-python assignment_agent.py
-```
-
-**Step 3 — Read the output**
-
-The terminal will print:
-- LLM reasoning trace (which tools to call and why)
-- Filtered job list
-- Ranked job list with scores (0–100)
-- Top 3 jobs
-- Tailored resume: rewritten summary + exactly 2 modified bullet points
-
-That's it. No server needed. No browser needed.
-
----
-
-## Optional: Enable LLM-Driven Tool Calling
-
-Without a key the agent falls back to rule-based heuristics. To unlock LLM decision-making:
-
-```bash
-# OpenAI
-export OPENAI_API_KEY=sk-...
-
-# or Anthropic Claude
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# or local Ollama (install Ollama first, then pull a model)
-ollama pull llama3
-export LLM_PROVIDER=ollama
-```
-
-Then re-run `python assignment_agent.py`. The agent will use function/tool calling so the LLM decides which tools to invoke and in what order.
-
----
-
-## Agent Pipeline
-
-```
-Candidate Profile
-      │
-      ▼
- [1] Filtering Tool
-     • Exclude FAANG companies (Meta, Amazon, Apple, Netflix, Google…)
-     • Location preference match
-     • Experience years limit
-     • Skills overlap check
-     • Optional remote-only filter
-     (No company-size filter; all company sizes are included.)
-      │
-      ▼
- [2] Ranking Tool
-     • Skill match       35%
-     • Title match       20%
-     • Location match    15%
-     • Recency           10%
-     • Experience        10%
-     • Company match      5%
-     • Salary match       5%
-     → Outputs ranked list with 0–100 scores
-      │
-      ▼
- [3] Resume Tailoring Tool  (top-ranked job only)
-     • Rewrite Professional Summary
-     • Modify exactly 2 experience bullet points
-     • Highlight aligned skills
-     • Rest of resume untouched
-```
-
----
-
-## Dataset
-
-`data/jobs_dataset.csv` — 29 manually collected real AI/ML job postings.
-
-| Column | Description |
-|--------|-------------|
-| Job Title | Role name |
-| Company | Employer |
-| Location | City / Remote |
-| Required Skills | Semicolon-separated skill list |
-| Years of Experience Required | Numeric |
-| Shortened Job Description (5–8 lines) | Role summary |
-| URL | Original job posting link |
-
----
-
-## Project Structure
-
-```
-Job-Search-Agent/
-├── assignment_agent.py          # ← MAIN ENTRY POINT for assignment
-├── data/
-│   ├── jobs_dataset.csv         # 29 AI/ML job postings
-│   ├── benchmark_jobs.json      # 20-job evaluation set
-│   └── sample_resume.json       # Sample AI Engineer profile
-├── linkedin_scraper/
-│   └── agent/
-│       ├── llm_tool_agent.py    # LLM tool-calling (OpenAI / Claude / Ollama)
-│       ├── ranker.py            # Ranking logic + filtering rules
-│       ├── resume_tailor.py     # Resume tailoring
-│       ├── profile.py           # Candidate profile model
-│       ├── cover_letter.py      # Cover letter generation
-│       └── evaluation.py        # Hiring simulation / evaluation metrics
-├── api/
-│   └── main.py                  # FastAPI backend (optional web UI)
-├── frontend/                    # React web interface (optional)
-├── docs/                        # Design docs, filtering rules, ranking spec
-└── requirements.txt
-```
-
----
-
-## Full Web App (Optional)
-
-The project also includes a full web interface ("Career Match") with live job search across LinkedIn, Indeed, and Greenhouse. This is **not required for assignment grading** — it's a bonus.
-
-**Backend**
-```bash
-python api/main.py
-# Runs at http://localhost:8000
-```
-
-**Frontend** (separate terminal)
 ```bash
 cd frontend
 npm install
-npm run dev
-# Runs at http://localhost:5173
+cd ..
 ```
 
----
+**4. Start the backend** (leave this terminal open)
 
-## Requirements
-
-- Python 3.10+
-- Node.js 18+ (only for the optional web UI)
-
-Install Python dependencies:
 ```bash
-pip install -r requirements.txt
+python api/main.py
 ```
 
+You should see something like: `Uvicorn running on http://0.0.0.0:8000`
+
+**5. Start the frontend** (open a **new** terminal)
+
+```bash
+cd Job-Search-Agent/frontend
+npm run dev
+```
+
+You should see a local URL, usually: `http://localhost:5173`
+
+**6. Open the app**
+
+In your browser go to: **http://localhost:5173**
+
+Create a profile, then use **AI Agent** to search and rank jobs (live or from the CSV dataset), generate resumes, and run evaluation.
+
 ---
 
-## Common Issues
+## Optional: LLM reasoning
 
-| Problem | Fix |
-|---------|-----|
-| `ModuleNotFoundError` | Run `pip install -r requirements.txt` |
-| `FileNotFoundError: jobs_dataset.csv` | Make sure you're running from the `Job-Search-Agent/` root folder |
-| LLM reasoning says "Ollama unavailable" | Either set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, or install Ollama and run `ollama pull llama3` |
-| Port 8000 or 5173 already in use | Only relevant for the optional web UI, not the assignment script |
+The app can show an “LLM Reasoning & Trace” and use an LLM for resume text. To enable:
+
+- **Ollama (local):** Install [Ollama](https://ollama.ai), run `ollama pull llama3.2`, then start the backend with:
+  ```bash
+  LLM_PROVIDER=ollama python api/main.py
+  ```
+- **OpenAI or Claude:** Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in your environment (or in a `.env` file in the project root). The app will use it for reasoning and resume generation when available.
 
 ---
 
-## Use Responsibly
+## If something goes wrong
 
-This project is for personal academic use. AI-generated resume content should always be reviewed before submission to real employers.
+| Problem | What to do |
+|--------|------------|
+| “Could not connect to the server” | Start the backend first (`python api/main.py`) and leave it running. |
+| “Module not found” | Run `pip install -r requirements.txt` from the project root. |
+| “npm: command not found” | Install Node.js from [nodejs.org](https://nodejs.org). |
+| Port 8000 or 5173 already in use | Stop the other app using that port, or use a different port. |
+| “Ollama unavailable” | Install Ollama and run `ollama pull llama3.2`, or set an OpenAI/Claude API key. |
+
+---
+
+## Use responsibly
+
+For personal use only. Always review AI-generated resumes and cover letters before sending to employers.
